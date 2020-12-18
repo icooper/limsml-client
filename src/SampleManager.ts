@@ -1,6 +1,5 @@
 import * as soap from 'soap';
 import xml2js from 'xml2js';
-
 import * as Limsml from './Limsml';
 
 export class Server {
