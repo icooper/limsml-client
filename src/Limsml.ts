@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import util from 'util';
 import xml2js from 'xml2js';
 
 type Header = {
@@ -6,6 +7,17 @@ type Header = {
     password?: string,
     session?: string,
     connect?: ConnectionType
+}
+
+type Action = {
+    command: string,
+    parameters?: { [key: string]: string | number | boolean }
+}
+
+type Field = {
+    id: string,
+    value: string,
+    attributes?: { [key: string]: string | number | boolean }
 }
 
 export enum ConnectionType {
@@ -80,12 +92,13 @@ export class Request extends LimsmlBase {
         }
         crc ^= -1;
 
-        const key = crypto.createHash("md5").update([
-            (crc >> 24 & 0xff).toString(16),
-            (crc >> 16 & 0xff).toString(16),
-            (crc >> 8 & 0xff).toString(16),
-            (crc & 0xff).toString(16)
-        ].join("-").toUpperCase()).digest();
+        const crcText = [
+            (crc >> 24 & 0xff),
+            (crc >> 16 & 0xff),
+            (crc >> 8 & 0xff),
+            (crc & 0xff)
+        ].map((n: number) => (n < 16 ? "0" : "") + n.toString(16)).join("-").toUpperCase();
+        const key = crypto.createHash("md5").update(crcText).digest();
         for (let i = 5; i < 16; i++) key[i] = 0;
 
         return key;
@@ -133,9 +146,9 @@ export class Request extends LimsmlBase {
         };
 
         if (root) {
-            data["$"]["xmlns:xsd"] = this.xmlnsXsd;
-            data["$"]["xmlns:xsi"] = this.xmlnsXsi;
-            data["$"]["xmlns"] = this.xmlns;
+            data.$["xmlns:xsd"] = this.xmlnsXsd;
+            data.$["xmlns:xsi"] = this.xmlnsXsi;
+            data.$["xmlns"] = this.xmlns;
         }
 
         switch (this.header.connect) {
@@ -179,11 +192,15 @@ export class Transaction extends LimsmlBase {
         };
 
         if (root) {
-            data["$"]["xmlns:xsd"] = this.xmlnsXsd;
-            data["$"]["xmlns:xsi"] = this.xmlnsXsi;
+            data.$["xmlns:xsd"] = this.xmlnsXsd;
+            data.$["xmlns:xsi"] = this.xmlnsXsi;
         }
 
         return data;
+    }
+
+    getCommand(): string {
+        return `${this.system.entity.type}.${this.system.entity.action?.command ?? ""}`;
     }
 }
 
@@ -207,7 +224,7 @@ export class System extends LimsmlBase {
         };
 
         if (root) {
-            data["$"]["xmlns"] = this.xmlns;
+            data.$["xmlns"] = this.xmlns;
         }
 
         return data;
@@ -216,160 +233,271 @@ export class System extends LimsmlBase {
 
 export class Entity extends LimsmlBase {
 
-    private readonly type: string;
-    private actions: Array<Action>;
-    private fields: Array<Field>;
-    private children: Array<Entity>;
+    readonly type: string;
+    readonly action?: Action;
+    readonly fields: Array<Field>;
+    readonly children: Array<Entity>;
 
-    constructor(type: string, options?: { actions?: Array<Action>, fields?: Array<Field>, children?: Array<Entity> }) {
+    constructor(type: string, options?: { action?: Action, fields?: Array<Field>, children?: Array<Entity> }) {
         super("entity");
-        this.type = type.toUpperCase();
-        this.actions = options ? options.actions ?? [ ] : [ ];
+        this.type = type;
+        this.action = options ? options.action ?? undefined : undefined;
         this.fields = options ? options.fields ?? [ ] : [ ];
         this.children = options ? options.children ?? [ ] : [ ];
     }
 
-    addAction(action: Action) {
-        this.actions.push(action);
-    }
-
-    addField(field: Field) {
-        this.fields.push(field);
-    }
-
-    addChild(child: Entity) {
-        this.children.push(child);
-    }
-
     getData(root: boolean = false): any {
-        let data: any = {
-            $: { type: this.type },
-            actions: this.actions.length > 0 ? [ ] : [ '' ],
-            fields: this.fields.length > 0 ? [ ] : [ '' ],
-            children: this.children.length > 0 ? [ ] : [ '' ]
+        let actions: Array<any> = [ '' ];
+        if (this.action) {
+            const actionData: any = {
+                command: [ this.action.command.toUpperCase() ]
+            };
+            if (this.action.parameters && Object.keys(this.action.parameters).length > 0) {
+                actionData.parameter = [ ];
+                Object.keys(this.action.parameters).forEach(param => {
+                    let paramValue = (this.action?.parameters ?? { })[param];
+                    if (typeof paramValue === "boolean") {
+                        paramValue = paramValue ? "True" : "False";
+                    }
+                    actionData.parameter.push({
+                        _: paramValue,
+                        $: { name: param.toUpperCase() }
+                    });
+                });
+            }
+            actions = [ { action: [ actionData ] } ];
         }
 
-        this.actions.forEach(action => data.actions.push(action.getData(false)));
-        this.fields.forEach(field => data.actions.push(field.getData(false)));
-        this.children.forEach(entity => data.actions.push(entity.getData(false)));
-        return data;
-    }
-}
-
-export class Action extends LimsmlBase {
-    readonly command: string;
-    private parameters: { [key: string]: string };
-
-    constructor(command: string, parameters?: { [key: string]: string }) {
-        super("action");
-        this.command = command.toUpperCase();
-        this.parameters = parameters ?? { };
-    }
-
-    setParameter(name: string, value: string) {
-        this.parameters[name.toUpperCase()] = value;
-    }
-
-    getParameter(name: string): string {
-        return this.parameters[name];
-    }
-
-    getData(root: boolean = false): any {
-        let data: any = {
-            action: [
-                {
-                    command: [ this.command ]
-                }
-            ]
-        }
-
-        const keys = Object.keys(this.parameters);
-        if (keys.length > 0) {
-            data.action[0]['parameter'] = Object.keys(this.parameters).map(key => {
-                return {
-                    _: this.parameters[key],
-                    $: { name: key }
+        let fields: Array<any> = [ '' ];
+        if (this.fields.length > 0) {
+            fields = [ { field: this.fields.map(f => {
+                let fieldData: any = { 
+                    _: f.value,
+                    $: { id: f.id.toUpperCase() }
                 };
-            });
+
+                if (f.attributes) {
+                    Object.keys(f.attributes).forEach(attr => {
+                        fieldData.$[attr] = (f.attributes ?? { })[attr];
+                    });
+                }
+
+                return fieldData;
+            }) } ];
+        }
+
+        let children: Array<any> = root ? [ ] : [ '' ];
+        if (this.children.length > 0) {
+            children = [ { entity: this.children.map(c => c.getData(true)) } ];
+        }
+
+        let data: any = {
+            $: { type: this.type.toUpperCase() },
+            actions, fields, children
         }
 
         return data;
     }
 }
 
-export class Field extends LimsmlBase {
-    readonly id: string;
-    readonly value: string;
-    private attributes: { [key: string]: string };
+export type Response = {
+    parameters: {
+        session?: string
+    },
+    body: Array<ResponseBody>,
+    errors: Array<ResponseError>,
+    raw?: any
+}
 
-    constructor(id: string, value: string, attributes?: { [key: string]: string }) {
-        super("field");
-        this.id = id;
-        this.value = value;
-        this.attributes = attributes ?? { };
+export enum ResponseType {
+    System = "system",
+    Data = "data"
+}
+
+export type DataColumn = {
+    name: string,
+    caption: string,
+    type: string
+}
+
+export type DataTable = {
+    columns: Array<DataColumn>,
+    rows: number,
+    table: Array<any>
+}
+
+export abstract class ResponseBody {
+    readonly type: ResponseType;
+    readonly data: string | { [key: string]: DataTable } | undefined;
+
+    constructor(type: ResponseType) {
+        this.type = type;
     }
+}
 
-    setAttribute(name: string, value: string) {
-        this.attributes[name] = value;
+export class SystemResponse extends ResponseBody {
+    readonly data: string;
+    readonly command: string;
+
+    constructor(responseObj: any) {
+        super(ResponseType.System);
+        this.data = responseObj.entity[0].fields[0].field.find((f: any) => f.$.id === "RETURN")._;
+        this.command = responseObj.entity[0].actions[0].action[0].command[0];
     }
+}
 
-    getAttribute(name: string): string {
-        return this.attributes[name];
-    }
+export class DataResponse extends ResponseBody {
+    readonly data: { [key: string]: DataTable };
 
-    getData(root: boolean = false): any {
-        let data: any = {
-            $: { id: this.id },
-            _: this.value
-        }
+    constructor(responseObj: any) {
+        super(ResponseType.Data);
 
-        Object.keys(this.attributes).forEach(key => {
-            data["$"][key] = this.attributes[key];
+        this.data = { };
+
+        // parse schema
+        const schema = responseObj.ADODataSet[0].NewDataSet[0]["xs:schema"][0]["xs:element"][0]["xs:complexType"][0]["xs:choice"][0]["xs:element"];
+        schema.forEach((t: any) => {
+            this.data[t.$.name.toLowerCase()] = {
+                columns: t["xs:complexType"][0]["xs:sequence"][0]["xs:element"].map((c: any) => {
+                    return {
+                        name: c.$.name,
+                        caption: c.$["msdata:Caption"],
+                        type: c.$.type.substr(3)
+                    };
+                }),
+                rows: 0,
+                table: [] as Array<any>
+            };
         });
 
-        return data;
+        // add data
+        Object.keys(this.data).forEach(t => {
+            const table = responseObj.ADODataSet[0].NewDataSet[0][t.toUpperCase()];
+            this.data[t].rows = table.length;
+            table.forEach((e: any) => {
+                const row: any = { };
+                this.data[t].columns.forEach(c => {
+                    const key = c.name.toLowerCase();
+                    let value = (e[c.name] ?? [ undefined ])[0];
+                    switch (c.type) {
+                        case "boolean":
+                            row[key] = value.toLowerCase() === "true";
+                            break;
+
+                        default:
+                            row[key] = value;
+                            break;
+                    }
+                });
+                this.data[t].table.push(row);
+            });
+        });
     }
 }
 
-export function StartSession(username: string, password: string = ""): Request {
+export class ResponseError {
+    readonly summary: string;
+    readonly description: string;
+    readonly code: string;
+    readonly severity: string;
+    readonly source: string;
+    // readonly errors: Array<Error>;
+
+    constructor(errorObj: any) {
+        this.summary = errorObj.summary[0];
+        this.description = errorObj.description[0];
+        this.code = errorObj.code[0];
+        this.severity = errorObj.severity[0];
+        this.source = errorObj.source[0];
+        // this.errors = [];
+    }
+
+    toString(): string {
+        return `${this.summary} (${this.code})`;
+    }
+}
+
+export function ParseResponse(obj: any): Response {
+    const response = {
+        parameters: { } as { [key: string]: string },
+        body: [ ] as Array<ResponseBody>,
+        errors: [ ] as Array<ResponseError>,
+        raw: obj
+    }
+
+    // parse parameters
+    if (obj.limsml?.header[0]?.parameter) {
+        obj.limsml.header[0].parameter.forEach((p: any) => {
+            response.parameters[p.$.name.toLowerCase()] = p._;
+        });
+    }
+
+    // parse body
+    if (obj.limsml?.body[0]?.transaction) {
+        obj.limsml.body[0].transaction.forEach((t: any) => {
+            if (t.system) {
+                response.body.push(new SystemResponse(t.system[0]));
+            } else if (t.data) {
+                response.body.push(new DataResponse(t.data[0]));
+            }
+        });
+    }
+
+    // parse errors
+    if (obj.limsml?.errors[0]?.error) {
+        obj.limsml.errors[0].error.forEach((e: any) => {
+            response.errors.push(new ResponseError(e));
+        });
+    }
+
+    return response;
+}
+
+export function StartSession(username: string, password: string = "", transaction?: Transaction | Array<Transaction>): Request {
     return new Request(
         {
             username,
             password,
             connect: ConnectionType.StartSession
         },
-        new Transaction(
+        transaction ?? new Transaction(
             new System("system",
                 new Entity("system",
-                    { actions: [ new Action("ping", { message: "Hello" }) ] }
+                    { action: { command: "login" } }
                 )
             )
         )
     );
 }
 
-export function ContinueSession(username: string, session: string, transaction: Transaction | Array<Transaction>) {
+export function ContinueSession(username: string, session: string, transaction: Transaction | Array<Transaction>): Request {
     return new Request(
         {
             username,
             session,
             connect: ConnectionType.ContinueSession
         },
-        transaction
+        transaction ?? new Transaction(
+            new System("system",
+                new Entity("system",
+                    { action: { command: "ping", parameters: { message: "Are you still there?" } } }
+                )
+            )
+        )
     );
 }
 
-export function EndSession(username: string, session: string): Request {
+export function EndSession(username: string, session: string, transaction?: Transaction | Array<Transaction>): Request {
     return new Request(
         {
             username,
             session,
             connect: ConnectionType.EndSession
         },
-        new Transaction(
+        transaction ?? new Transaction(
             new System("system",
                 new Entity("system",
-                    { actions: [ new Action("ping", { message: "Goodbye" }) ] }
+                    { action: { command: "logout" } }
                 )
             )
         )
