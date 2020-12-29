@@ -2,22 +2,22 @@ import crypto from 'crypto';
 import util from 'util';
 import xml2js from 'xml2js';
 
-type Header = {
+type HeaderNode = {
     username: string,
     password?: string,
     session?: string,
     connect?: ConnectionType
 }
 
-type Action = {
+export type ActionNode = {
     command: string,
-    parameters?: { [key: string]: string | number | boolean }
+    parameters: { [key: string]: string | number | boolean }
 }
 
-type Field = {
+export type FieldNode = {
     id: string,
-    value: string,
-    attributes?: { [key: string]: string | number | boolean }
+    value: string | number | boolean,
+    [attribute: string]: string | number | boolean
 }
 
 export enum ConnectionType {
@@ -59,10 +59,10 @@ export class Request extends LimsmlBase {
     private readonly xmlnsXsd = "http://www.w3.org/2001/XMLSchema";
     private readonly xmlnsXsi = "http://www.w3.org/2001/XMLSchema-instance";
     private readonly xmlns: string = "http://www.thermo.com/informatics/xmlns/limsml/1.0";
-    private readonly header: Header;
-    readonly transactions: Array<Transaction>;
+    private readonly header: HeaderNode;
+    readonly transactions: Array<TransactionNode>;
 
-    constructor(header: Header, transactions: Transaction | Array<Transaction>, ) {
+    constructor(header: HeaderNode, transactions: TransactionNode | Array<TransactionNode>, ) {
         super("limsml");
         this.header = {
             username: header.username,
@@ -70,7 +70,7 @@ export class Request extends LimsmlBase {
             session: header.session,
             connect: header.connect ?? ConnectionType.StartSession
         }
-        this.transactions = transactions instanceof Transaction ? [ transactions ] : transactions;
+        this.transactions = transactions instanceof TransactionNode ? [ transactions ] : transactions;
     }
 
     private static createKey(input: string): Buffer {
@@ -175,12 +175,12 @@ export class Request extends LimsmlBase {
     }
 }
 
-export class Transaction extends LimsmlBase {
-    readonly system: System;
+export class TransactionNode extends LimsmlBase {
+    readonly system: SystemNode;
     private readonly xmlnsXsd = "http://www.w3.org/2001/XMLSchema";
     private readonly xmlnsXsi = "http://www.w3.org/2001/XMLSchema-instance";
 
-    constructor(system: System, attributes?: { [key: string]: string }) {
+    constructor(system: SystemNode, attributes?: { [key: string]: string }) {
         super("transaction");
         this.system = system;
     }
@@ -204,12 +204,12 @@ export class Transaction extends LimsmlBase {
     }
 }
 
-export class System extends LimsmlBase {
+export class SystemNode extends LimsmlBase {
     readonly responseType: string;
-    readonly entity: Entity;
+    readonly entity: EntityNode;
     private readonly xmlns: string = "http://www.thermo.com/informatics/xmlns/limsml/1.0";
 
-    constructor(responseType: "system" | "data", entity: Entity) {
+    constructor(responseType: "system" | "data", entity: EntityNode) {
         super("system");
         this.responseType = responseType;
         this.entity = entity;
@@ -218,7 +218,7 @@ export class System extends LimsmlBase {
     getData(root: boolean = false): any {
         let data: any = {
             $: {
-                response_type: this.responseType
+                response_type: this.responseType.toLowerCase()
             },
             entity: [ this.entity.getData(false) ]
         };
@@ -231,14 +231,14 @@ export class System extends LimsmlBase {
     }
 }
 
-export class Entity extends LimsmlBase {
+export class EntityNode extends LimsmlBase {
 
     readonly type: string;
-    readonly action?: Action;
-    readonly fields: Array<Field>;
-    readonly children: Array<Entity>;
+    readonly action?: ActionNode;
+    readonly fields: Array<FieldNode>;
+    readonly children: Array<EntityNode>;
 
-    constructor(type: string, options?: { action?: Action, fields?: Array<Field>, children?: Array<Entity> }) {
+    constructor(type: string, options?: { action?: ActionNode, fields?: Array<FieldNode>, children?: Array<EntityNode> }) {
         super("entity");
         this.type = type;
         this.action = options ? options.action ?? undefined : undefined;
@@ -271,15 +271,25 @@ export class Entity extends LimsmlBase {
         let fields: Array<any> = [ '' ];
         if (this.fields.length > 0) {
             fields = [ { field: this.fields.map(f => {
+                let fieldValue = f.value;
+                if (typeof fieldValue === "boolean") {
+                    fieldValue = fieldValue ? "True" : "False";
+                }
                 let fieldData: any = { 
-                    _: f.value,
-                    $: { id: f.id.toUpperCase() }
+                    _: fieldValue,
+                    $: { }
                 };
 
-                if (f.attributes) {
-                    Object.keys(f.attributes).forEach(attr => {
-                        fieldData.$[attr] = (f.attributes ?? { })[attr];
-                    });
+                Object.keys(f).filter(a => a !== "value").forEach(a => {
+                    let attrValue = f[a];
+                    if (typeof attrValue === "boolean") {
+                        attrValue = attrValue ? "True" : "False";
+                    }
+                    fieldData.$[a] = attrValue;
+                })
+
+                if (!fieldData.$.datatype) {
+                    fieldData.$.datatype = "Text";
                 }
 
                 return fieldData;
@@ -288,7 +298,7 @@ export class Entity extends LimsmlBase {
 
         let children: Array<any> = root ? [ ] : [ '' ];
         if (this.children.length > 0) {
-            children = [ { entity: this.children.map(c => c.getData(true)) } ];
+            children = [ { entity: this.children.map(c => c.getData(root)) } ];
         }
 
         let data: any = {
@@ -300,7 +310,7 @@ export class Entity extends LimsmlBase {
     }
 }
 
-export type Response = {
+export type ResponseNode = {
     parameters: {
         session?: string
     },
@@ -328,7 +338,7 @@ export type DataTable = {
 
 export abstract class ResponseBody {
     readonly type: ResponseType;
-    readonly data: string | { [key: string]: DataTable } | undefined;
+    readonly data: string | boolean | { [key: string]: DataTable } | undefined;
 
     constructor(type: ResponseType) {
         this.type = type;
@@ -336,13 +346,19 @@ export abstract class ResponseBody {
 }
 
 export class SystemResponse extends ResponseBody {
-    readonly data: string;
+    readonly data: string | boolean;
     readonly command: string;
 
     constructor(responseObj: any) {
         super(ResponseType.System);
-        this.data = responseObj.entity[0].fields[0].field.find((f: any) => f.$.id === "RETURN")._;
-        this.command = responseObj.entity[0].actions[0].action[0].command[0];
+
+        try {
+            this.data = responseObj.entity[0].fields[0].field.find((f: any) => f.$.id === "RETURN")._;
+            this.command = responseObj.entity[0].actions[0].action[0].command[0];
+        } catch (e) {
+            this.data = true;
+            this.command = "_";
+        }
     }
 }
 
@@ -372,25 +388,29 @@ export class DataResponse extends ResponseBody {
 
         // add data
         Object.keys(this.data).forEach(t => {
-            const table = responseObj.ADODataSet[0].NewDataSet[0][t.toUpperCase()];
-            this.data[t].rows = table.length;
-            table.forEach((e: any) => {
-                const row: any = { };
-                this.data[t].columns.forEach(c => {
-                    const key = c.name.toLowerCase();
-                    let value = (e[c.name] ?? [ undefined ])[0];
-                    switch (c.type) {
-                        case "boolean":
-                            row[key] = value.toLowerCase() === "true";
-                            break;
+            if (Object.keys(responseObj.ADODataSet[0].NewDataSet[0]).includes(t.toUpperCase())) {
+                const table = responseObj.ADODataSet[0].NewDataSet[0][t.toUpperCase()];
+                this.data[t].rows = table.length;
+                table.forEach((e: any) => {
+                    const row: any = { };
+                    this.data[t].columns.forEach(c => {
+                        const key = c.name.toLowerCase();
+                        let value = (e[c.name] ?? [ undefined ])[0];
+                        switch (c.type) {
+                            case "boolean":
+                                row[key] = value.toLowerCase() === "true";
+                                break;
 
-                        default:
-                            row[key] = value;
-                            break;
-                    }
+                            default:
+                                row[key] = value;
+                                break;
+                        }
+                    });
+                    this.data[t].table.push(row);
                 });
-                this.data[t].table.push(row);
-            });
+            } else {
+                this.data[t].rows = 0;
+            }
         });
     }
 }
@@ -417,7 +437,7 @@ export class ResponseError {
     }
 }
 
-export function ParseResponse(obj: any): Response {
+export function ParseResponse(obj: any): ResponseNode {
     const response = {
         parameters: { } as { [key: string]: string },
         body: [ ] as Array<ResponseBody>,
@@ -453,52 +473,50 @@ export function ParseResponse(obj: any): Response {
     return response;
 }
 
-export function StartSession(username: string, password: string = "", transaction?: Transaction | Array<Transaction>): Request {
+export function CreateTransaction(responseType: ResponseType, entity: EntityNode) {
+    return new TransactionNode(new SystemNode(responseType, entity));
+}
+
+export function StartSession(username: string, password: string = "", transaction?: TransactionNode | Array<TransactionNode>): Request {
     return new Request(
         {
             username,
             password,
             connect: ConnectionType.StartSession
         },
-        transaction ?? new Transaction(
-            new System("system",
-                new Entity("system",
-                    { action: { command: "login" } }
-                )
+        transaction ?? CreateTransaction(ResponseType.Data, 
+            new EntityNode("user",
+                { action: { command: "login", parameters: { } } }
             )
         )
     );
 }
 
-export function ContinueSession(username: string, session: string, transaction: Transaction | Array<Transaction>): Request {
+export function ContinueSession(username: string, session: string, transaction: TransactionNode | Array<TransactionNode>): Request {
     return new Request(
         {
             username,
             session,
             connect: ConnectionType.ContinueSession
         },
-        transaction ?? new Transaction(
-            new System("system",
-                new Entity("system",
-                    { action: { command: "ping", parameters: { message: "Are you still there?" } } }
-                )
+        transaction ?? CreateTransaction(ResponseType.System,
+            new EntityNode("system",
+                { action: { command: "ping", parameters: { message: "Are you still there?" } } }
             )
         )
     );
 }
 
-export function EndSession(username: string, session: string, transaction?: Transaction | Array<Transaction>): Request {
+export function EndSession(username: string, session: string, transaction?: TransactionNode | Array<TransactionNode>): Request {
     return new Request(
         {
             username,
             session,
             connect: ConnectionType.EndSession
         },
-        transaction ?? new Transaction(
-            new System("system",
-                new Entity("system",
-                    { action: { command: "logout" } }
-                )
+        transaction ?? CreateTransaction(ResponseType.Data,
+            new EntityNode("user",
+                { action: { command: "logout", parameters: { } } }
             )
         )
     );
