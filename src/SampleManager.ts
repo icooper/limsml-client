@@ -1,6 +1,4 @@
-import { SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION } from 'constants';
 import * as soap from 'soap';
-import util from 'util';
 import xml2js from 'xml2js';
 import * as Limsml from './Limsml';
 
@@ -144,7 +142,7 @@ export class Entity {
     }
 }
 
-export class Transaction {
+class Transaction {
     readonly entity: Entity;
 
     constructor(entity: Entity) {

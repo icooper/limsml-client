@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import util from 'util';
 import xml2js from 'xml2js';
 
 type HeaderNode = {
