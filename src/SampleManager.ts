@@ -4,9 +4,9 @@ import util from 'util';
 import xml2js from 'xml2js';
 import * as Limsml from './Limsml';
 
-export const LiveSchemaGuid = "4195E9A3-AF94-4969-A16E-6FCF9F252858";
+const LiveSchemaGuid = "4195E9A3-AF94-4969-A16E-6FCF9F252858";
 
-export type Field = Limsml.FieldNode;
+export type Fields = Limsml.FieldsNode;
 export enum ResponseType {
     System = "system",
     Data = "data"
@@ -49,7 +49,7 @@ export class Action {
     }
 }
 
-export class EntityDefinition {
+class EntityDefinition {
     readonly type: string;
     readonly actions: { [key: string]: Action };
 
@@ -71,7 +71,7 @@ export class EntityDefinition {
         options: {
             action?: string | Action,
             parameters?: { [key: string]: string | number | boolean },
-            fields?: Array<Field>,
+            fields?: Fields,
             children?: Array<Entity>
         }
     ): Entity {
@@ -101,7 +101,7 @@ export class Entity {
     readonly type: string;
     readonly action?: Action;
     readonly parameters: { [key: string]: string | number | boolean };
-    readonly fields: Array<Field>;
+    readonly fields: Fields;
     readonly children: Array<Entity>;
 
     constructor(
@@ -109,7 +109,7 @@ export class Entity {
         options?: {
             action?: Action,
             parameters?: { [key: string]: string | number | boolean },
-            fields?: Array<Field>,
+            fields?: Fields,
             children?: Array<Entity>
         }
     ) {
@@ -117,12 +117,12 @@ export class Entity {
         this.type = type;
         this.action = options?.action;
         this.parameters = options?.parameters ?? { };
-        this.fields = options?.fields ?? [ ];
+        this.fields = options?.fields ?? { };
         this.children = options?.children ?? [ ];
     }
 
-    addField(field: Field): void {
-        this.fields.push(field);
+    addField(id: string, field: { value: string | number | boolean, [attribute: string]: string | number | boolean }): void {
+        this.fields[id] = field;
     }
 
     addChild(child: Entity): void {
@@ -203,12 +203,14 @@ export class Client {
         return Limsml.ParseResponse(resultObj);
     }
 
-    async execute(transaction: Transaction | Array<Transaction>): Promise<Response>;
+    async execute(transaction: Transaction): Promise<Response>;
+    async execute(transactions: Array<Transaction>): Promise<Response>;
+    async execute(entity: Entity): Promise<Response>;
     async execute(entityType: string, options?: {
         action?: string | Action,
         responseType?: ResponseType,
         parameters?: { [key: string]: string | number | boolean },
-        fields?: Array<Field>,
+        fields?: Fields,
         children?: Array<Entity>
     }): Promise<Response>;
     async execute(entityType: string, options?: {
@@ -228,7 +230,11 @@ export class Client {
             let action: Action | undefined = undefined;
             if (options?.action) {
                 if (this.unsafe) {
-                    action = new Action(options.action, options.responseType);
+                    if (options.action instanceof Action) {
+                        action = options.action
+                    } else {
+                        action = new Action(options.action, options.responseType);
+                    }
                 } else {
                     if (Object.keys(this.entities).includes(entity)) {
                         if (options.action instanceof Action) {
@@ -245,7 +251,7 @@ export class Client {
             }
 
             let parameters: { [key: string]: string } = { };
-            const paramFilter = (p: string) => p !== "action" && p !== "responseType";
+            const paramFilter = (p: string) => ![ "action", "responseType", "fields", "children" ].includes(p);
             if (options?.parameters) {
                 parameters = options.parameters;
             } else {
@@ -272,6 +278,8 @@ export class Client {
             )) ];
         } else if (executable instanceof Transaction) {
             transactions = [ executable ];
+        } else if (executable instanceof Entity) {
+            transactions = [ new Transaction(executable) ];
         } else {
             transactions = executable;
         }

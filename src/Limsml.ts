@@ -14,10 +14,11 @@ export type ActionNode = {
     parameters: { [key: string]: string | number | boolean }
 }
 
-export type FieldNode = {
-    id: string,
-    value: string | number | boolean,
-    [attribute: string]: string | number | boolean
+export type FieldsNode = {
+    [id: string]: {
+        value: string | number | boolean,
+        [attribute: string]: string | number | boolean
+    }
 }
 
 export enum ConnectionType {
@@ -235,14 +236,14 @@ export class EntityNode extends LimsmlBase {
 
     readonly type: string;
     readonly action?: ActionNode;
-    readonly fields: Array<FieldNode>;
+    readonly fields: FieldsNode;
     readonly children: Array<EntityNode>;
 
-    constructor(type: string, options?: { action?: ActionNode, fields?: Array<FieldNode>, children?: Array<EntityNode> }) {
+    constructor(type: string, options?: { action?: ActionNode, fields?: FieldsNode, children?: Array<EntityNode> }) {
         super("entity");
         this.type = type;
         this.action = options ? options.action ?? undefined : undefined;
-        this.fields = options ? options.fields ?? [ ] : [ ];
+        this.fields = options ? options.fields ?? { } : { };
         this.children = options ? options.children ?? [ ] : [ ];
     }
 
@@ -269,19 +270,19 @@ export class EntityNode extends LimsmlBase {
         }
 
         let fields: Array<any> = [ '' ];
-        if (this.fields.length > 0) {
-            fields = [ { field: this.fields.map(f => {
-                let fieldValue = f.value;
+        if (Object.keys(this.fields).length > 0) {
+            fields = [ { field: Object.keys(this.fields).map(f => {
+                let fieldValue = this.fields[f].value;
                 if (typeof fieldValue === "boolean") {
                     fieldValue = fieldValue ? "True" : "False";
                 }
                 let fieldData: any = { 
                     _: fieldValue,
-                    $: { }
+                    $: { id: f }
                 };
 
-                Object.keys(f).filter(a => a !== "value").forEach(a => {
-                    let attrValue = f[a];
+                Object.keys(this.fields[f]).filter(a => a !== "value").forEach(a => {
+                    let attrValue = this.fields[f][a];
                     if (typeof attrValue === "boolean") {
                         attrValue = attrValue ? "True" : "False";
                     }
