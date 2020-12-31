@@ -1,87 +1,68 @@
-import { Client, Action, Entity, ResponseType, DataTable } from './SampleManager';
+import * as LIMSML from './limsml-client';
 
-const client = Client.create("SYSTEM", "", "http://localhost:56104/wsdl?wsdl", { debug: false, unsafe: true });
-
-client.then(async (client: Client) => {
+// connect to the local LIMSML web service
+LIMSML.Connect().then(async (client) => {
     try {
 
-        // execute a ping action
-        const pingResult = await client.execute("system", {
-            action: "ping",
-            message: "Howdy"
-        });
-        console.log("Ping", pingResult["ping"]);
+        // run the simple ping action
+        console.log(
+            "Ping:",
+            (await client.ping({ message: "Howdy" }))
+                .system.ping
+        );
 
-        // get the first 100 records from the personnel table
-        const findResult = await client.execute("personnel", {
-            action: "find",
-            responseType: ResponseType.Data
-        });
-        console.log("Personnel", (<DataTable>findResult.personnel).table.map(a => `${a.name} (${a.identity})`));
+        // get the contents of the personnel table (up to 100 records)
+        console.log(
+            "Personnel:",
+            (await client.find({ pagesize: 100 }, "personnel"))
+                .data.personnel.table
+                .map((r: any) => <any>{ identity: r.identity, name: r.name })
+        );
 
-        // enter some results
-        const resultEntry = await client.execute("sample", {
-            action: new Action("result_entry"),
-            fields: {
-                "id_numeric": {
-                    value: 2,
-                    direction: "in"
-                }
-            },
+        // enter some sample results
+        const sample: LIMSML.Entity = {
+            type: "sample",
+            fields: { id_numeric: 2},
             children: [
-                new Entity("test", {
-                    fields: {
-                        analysis: {
-                            direction: "in",
-                            value: "YELL_001"
-                        }
-                    },
+                {
+                    type: "test",
+                    fields: { analysis: "YELL_001" },
                     children: [
-                        new Entity("result", {
+                        {
+                            type: "result",
                             fields: {
-                                name: {
-                                    direction: "in",
-                                    value: "Yellowness"
-                                },
-                                text: {
-                                    direction: "in",
-                                    value: 444
-                                }
+                                name: "Yellowness",
+                                text: "1234"
                             }
-                        })
-                    ]
-                }),
-                new Entity("test", {
-                    fields: {
-                        analysis: {
-                            direction: "in",
-                            value: "WHITE_001"
                         }
-                    },
-                    children: [
-                        new Entity("result", {
-                            fields: {
-                                name: {
-                                    direction: "in",
-                                    value: "Whiteness"
-                                },
-                                text: {
-                                    direction: "in",
-                                    value: 999
-                                }
-                            }
-                        })
                     ]
-                })
+                },
+                {
+                    type: "test",
+                    fields: { analysis: "WHITE_001" },
+                    children: [
+                        {
+                            type: "result",
+                            fields: {
+                                name: "Whiteness",
+                                text: "9876"
+                            }
+                        }
+                    ]
+                }
             ]
-        });
-        if (resultEntry._) {
-            console.log("Result entry success");
-        } else {
-            console.log(`Result entry failure: ${resultEntry.error}`);
-        }
+        };
+        console.log(
+            "Result Entry:",
+            (await client.resultEntry(sample))
+                .errors.length === 0
+                    ? "success"
+                    : "failure"
+        );
 
+        // logout
         await client.logout();
+
     } catch (reason) {
         console.log(reason);
     }
