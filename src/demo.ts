@@ -1,4 +1,5 @@
-import * as LIMSML from './limsml-client';
+// use the LIMSML client library
+import * as LIMSML from '.';
 
 // connect to the local LIMSML web service
 LIMSML.Connect().then(async (client) => {

@@ -1,3 +1,9 @@
+/**
+ * A JavaScript client for the LIMSML web service used by the Thermo Fisher SampleManager LIMS application.
+ * @author Ian Cooper
+ * @module limsml-client
+ */
+
 //#region Imports
 
 import crypto from 'crypto';
