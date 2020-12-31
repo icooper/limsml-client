@@ -12,7 +12,7 @@ Include this package into your project using NPM:
 
 ## Basic Usage
 
-```
+```javascript
 const LIMSML = require('limsml-client');
 
 LIMSML.Connect("SYSTEM", "", "http://localhost:56104/wsdl?wsdl")
@@ -26,7 +26,7 @@ LIMSML.Connect("SYSTEM", "", "http://localhost:56104/wsdl?wsdl")
 
 The above can also be rewritten using the `async`/`await` syntax. This makes it easier to make multiple calls to the LIMSML service with the same connection.
 
-```
+```javascript
 const LIMSML = require('limsml-client');
     
 LIMSML.Connect("SYSTEM", "", "http://localhost:56104/wsdl?wsdl")
