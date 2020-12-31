@@ -119,7 +119,7 @@ class ActionDefinition {
         const entity = parsedArgs.entity;
 
         // check that the entity and parameters are valid for this action
-        if (this.validate(parameters, entity)) {
+        if (this.validate(parameters ?? { }, entity)) {
 
             // create the Action
             const action: Action = {
@@ -169,11 +169,20 @@ class ActionDefinition {
      * @param entity entity type or Entity to be validated
      * @returns true if the entity and parameters are valid for this action
      */
-    validate(parameters?: Parameters, entity?: string | Entity): boolean {
-        // TODO: Validate the entity type and parameters for this action. This
-        //       should check the entity against this.validEntities and the
-        //       parameters against requiredParameters.
-        return true;
+    validate(parameters: Parameters, entity: string | Entity): boolean {
+
+        // make sure that entity is just a string
+        if (typeof entity !== "string") {
+            entity = entity.type;
+        }
+
+        // check entity types
+        let valid = this.validEntities.length === 0 || this.validEntities.includes(entity) || this.validEntities.includes(GenericEntity);
+
+        // check required parameters
+        this.requiredParameters.forEach(p => valid &&= Object.keys(parameters).includes(p));
+
+        return valid;
     }
 
     /**
