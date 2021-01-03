@@ -12,10 +12,12 @@ Include this package into your project using NPM:
 
 ## Basic Usage
 
+Start with `Client.login()` to return a promise of a client connection.
+
 ```javascript
 const LIMSML = require('limsml-client');
 
-LIMSML.Connect("SYSTEM", "", "http://localhost:56104/wsdl?wsdl")
+LIMSML.Client.login("SYSTEM", "", "http://localhost:56104/wsdl?wsdl")
     .then(client => client.ping({ message: "Hello" }))
     .then(response => {
         console.log(response.system.ping);
@@ -29,7 +31,7 @@ The above can also be rewritten using the `async`/`await` syntax. This makes it 
 ```javascript
 const LIMSML = require('limsml-client');
     
-LIMSML.Connect("SYSTEM", "", "http://localhost:56104/wsdl?wsdl")
+LIMSML.Client.login("SYSTEM", "", "http://localhost:56104/wsdl?wsdl")
     .then(async client => {
 
         // make two requests
@@ -51,4 +53,4 @@ LIMSML.Connect("SYSTEM", "", "http://localhost:56104/wsdl?wsdl")
     });
 ```
 
-See [src/demo.ts](src/demo.ts) for some more detailed usage.
+See [src/demo.ts](src/demo.ts) for some more examples.

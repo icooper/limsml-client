@@ -1,8 +1,8 @@
 // use the LIMSML client library
-import * as LIMSML from '.';
+import { Client, Entity } from '.';
 
 // connect to the local LIMSML web service
-LIMSML.Connect().then(async (client) => {
+Client.login().then(async (client) => {
     try {
 
         // run the simple ping action
@@ -21,7 +21,7 @@ LIMSML.Connect().then(async (client) => {
         );
 
         // enter some sample results
-        const sample: LIMSML.Entity = {
+        const sample: Entity = {
             type: "sample",
             fields: { id_numeric: 2},
             children: [

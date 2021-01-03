@@ -218,9 +218,9 @@ class ActionDefinition {
 
 /**
  * Client for communicating with a SampleManager server via the LIMSML protocol.
- * This should generally be instantiated using the top-level `Connect()` function.
+ * This should be instantiated using `Client.login()`.
  */
-class Client {
+export class Client {
 
     /** SampleManager username */
     readonly _username: string;
@@ -244,7 +244,7 @@ class Client {
      * @param client SOAP client instance
      * @param debug debug flag
      */
-    constructor(username: string, password: string, client: soap.Client, debug?: boolean) {
+    private constructor(username: string, password: string, client: soap.Client, debug?: boolean) {
         this._username = username;
         this._password = password;
         this._client = client;
@@ -334,10 +334,11 @@ class Client {
     }
 
     /**
-     * Logs into the server. This must be called before any other transactions are executed.
+     * Logs into the server. This is called by `Client.login()` and must be
+     * completed before any other transactions can be executed.
      * @returns Promise of true if the login was successful
      */
-    async login(): Promise<boolean> {
+    private async _login(): Promise<boolean> {
 
         // we're requesting the contents of these tables during login
         const actionsTable = "limsml_entity_action";
@@ -528,6 +529,24 @@ class Client {
         } else {
             if (this._debug) console.error(`registerAction(): registering ${actionId} to existing ${actionFunc}() function`);
         }
+    }
+
+    /**
+     * Creates a new client connection via LIMSML web service.
+     * @param username SampleManager username (default = `"SYSTEM"`)
+     * @param password SampleManager password (default = `""`)
+     * @param url location to access LIMSML web service (default = `"http://localhost:56104/wsdl?wsdl"`)
+     * @param debug debug flag (default = `false`)
+     */
+    static async login(
+        username: string = "SYSTEM",
+        password: string = "",
+        url: string = "http://localhost:56104/wsdl?wsdl",
+        debug: boolean = false
+    ): Promise<Client> {
+        const client = new Client(username, password, await soap.createClientAsync(url), debug);
+        await client.login();
+        return client;
     }
 }
 
@@ -1204,6 +1223,8 @@ namespace Utils {
  * @param password SampleManager password (default = `""`)
  * @param url location to access LIMSML web service (default = `"http://localhost:56104/wsdl?wsdl"`)
  * @param debug debug flag (default = `false`)
+ * @returns `Client` instance
+ * @deprecated Please use `Client.login()` instead.
  */
 export async function Connect(
     username: string = "SYSTEM",
@@ -1211,9 +1232,7 @@ export async function Connect(
     url: string = "http://localhost:56104/wsdl?wsdl",
     debug: boolean = false
 ): Promise<Client> {
-    const client = new Client(username, password, await soap.createClientAsync(url), debug);
-    await client.login();
-    return client;
+    return Client.login(username, password, url, debug);
 }
 
 //#endregion
