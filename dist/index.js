@@ -63,7 +63,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Connect = void 0;
+exports.Connect = exports.Client = void 0;
 //#region Imports
 var crypto_1 = __importDefault(require("crypto"));
 var soap = __importStar(require("soap"));
@@ -213,7 +213,7 @@ var ActionDefinition = /** @class */ (function () {
 }());
 /**
  * Client for communicating with a SampleManager server via the LIMSML protocol.
- * This should generally be instantiated using the top-level `Connect()` function.
+ * This should be instantiated using `Client.login()`.
  */
 var Client = /** @class */ (function () {
     /**
@@ -284,10 +284,11 @@ var Client = /** @class */ (function () {
         return header;
     };
     /**
-     * Logs into the server. This must be called before any other transactions are executed.
+     * Logs into the server. This is called by `Client.login()` and must be
+     * completed before any other transactions can be executed.
      * @returns Promise of true if the login was successful
      */
-    Client.prototype.login = function () {
+    Client.prototype._login = function () {
         var _a;
         return __awaiter(this, void 0, void 0, function () {
             var actionsTable, paramsTable, transactions, request, response, actionsData, paramsData_1;
@@ -468,8 +469,39 @@ var Client = /** @class */ (function () {
                 console.error("registerAction(): registering " + actionId + " to existing " + actionFunc + "() function");
         }
     };
+    /**
+     * Creates a new client connection via LIMSML web service.
+     * @param username SampleManager username (default = `"SYSTEM"`)
+     * @param password SampleManager password (default = `""`)
+     * @param url location to access LIMSML web service (default = `"http://localhost:56104/wsdl?wsdl"`)
+     * @param debug debug flag (default = `false`)
+     */
+    Client.login = function (username, password, url, debug) {
+        if (username === void 0) { username = "SYSTEM"; }
+        if (password === void 0) { password = ""; }
+        if (url === void 0) { url = "http://localhost:56104/wsdl?wsdl"; }
+        if (debug === void 0) { debug = false; }
+        return __awaiter(this, void 0, void 0, function () {
+            var client, _a, _b;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0:
+                        _a = Client.bind;
+                        _b = [void 0, username, password];
+                        return [4 /*yield*/, soap.createClientAsync(url)];
+                    case 1:
+                        client = new (_a.apply(Client, _b.concat([_c.sent(), debug])))();
+                        return [4 /*yield*/, client.login()];
+                    case 2:
+                        _c.sent();
+                        return [2 /*return*/, client];
+                }
+            });
+        });
+    };
     return Client;
 }());
+exports.Client = Client;
 /**
  * LIMSML request.
  */
@@ -1005,6 +1037,8 @@ var Utils;
  * @param password SampleManager password (default = `""`)
  * @param url location to access LIMSML web service (default = `"http://localhost:56104/wsdl?wsdl"`)
  * @param debug debug flag (default = `false`)
+ * @returns `Client` instance
+ * @deprecated Please use `Client.login()` instead.
  */
 function Connect(username, password, url, debug) {
     if (username === void 0) { username = "SYSTEM"; }
@@ -1012,20 +1046,8 @@ function Connect(username, password, url, debug) {
     if (url === void 0) { url = "http://localhost:56104/wsdl?wsdl"; }
     if (debug === void 0) { debug = false; }
     return __awaiter(this, void 0, void 0, function () {
-        var client, _a, _b;
-        return __generator(this, function (_c) {
-            switch (_c.label) {
-                case 0:
-                    _a = Client.bind;
-                    _b = [void 0, username, password];
-                    return [4 /*yield*/, soap.createClientAsync(url)];
-                case 1:
-                    client = new (_a.apply(Client, _b.concat([_c.sent(), debug])))();
-                    return [4 /*yield*/, client.login()];
-                case 2:
-                    _c.sent();
-                    return [2 /*return*/, client];
-            }
+        return __generator(this, function (_a) {
+            return [2 /*return*/, Client.login(username, password, url, debug)];
         });
     });
 }

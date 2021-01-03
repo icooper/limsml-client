@@ -132,9 +132,9 @@ declare class ActionDefinition {
 }
 /**
  * Client for communicating with a SampleManager server via the LIMSML protocol.
- * This should generally be instantiated using the top-level `Connect()` function.
+ * This should be instantiated using `Client.login()`.
  */
-declare class Client {
+export declare class Client {
     /** SampleManager username */
     readonly _username: string;
     /** SampleManager password */
@@ -158,7 +158,7 @@ declare class Client {
      * @param client SOAP client instance
      * @param debug debug flag
      */
-    constructor(username: string, password: string, client: soap.Client, debug?: boolean);
+    private constructor();
     /**
      * Executes a transaction created by an Action instance.
      * @param transaction Transaction to execute
@@ -178,10 +178,11 @@ declare class Client {
      */
     protected _getHeader(type?: ConnectionType): Header;
     /**
-     * Logs into the server. This must be called before any other transactions are executed.
+     * Logs into the server. This is called by `Client.login()` and must be
+     * completed before any other transactions can be executed.
      * @returns Promise of true if the login was successful
      */
-    login(): Promise<boolean>;
+    private _login;
     logout(): Promise<void>;
     /**
      * Sends a request to the LIMSML server and returns the response
@@ -195,6 +196,14 @@ declare class Client {
      * @param action Action instance
      */
     protected _registerAction(entity: string, action: ActionDefinition): void;
+    /**
+     * Creates a new client connection via LIMSML web service.
+     * @param username SampleManager username (default = `"SYSTEM"`)
+     * @param password SampleManager password (default = `""`)
+     * @param url location to access LIMSML web service (default = `"http://localhost:56104/wsdl?wsdl"`)
+     * @param debug debug flag (default = `false`)
+     */
+    static login(username?: string, password?: string, url?: string, debug?: boolean): Promise<Client>;
 }
 /**
  * LIMSML request.
@@ -280,6 +289,8 @@ declare class Response {
  * @param password SampleManager password (default = `""`)
  * @param url location to access LIMSML web service (default = `"http://localhost:56104/wsdl?wsdl"`)
  * @param debug debug flag (default = `false`)
+ * @returns `Client` instance
+ * @deprecated Please use `Client.login()` instead.
  */
 export declare function Connect(username?: string, password?: string, url?: string, debug?: boolean): Promise<Client>;
 export {};
