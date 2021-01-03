@@ -545,7 +545,7 @@ export class Client {
         debug: boolean = false
     ): Promise<Client> {
         const client = new Client(username, password, await soap.createClientAsync(url), debug);
-        await client.login();
+        await client._login();
         return client;
     }
 }

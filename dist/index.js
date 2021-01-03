@@ -491,7 +491,7 @@ var Client = /** @class */ (function () {
                         return [4 /*yield*/, soap.createClientAsync(url)];
                     case 1:
                         client = new (_a.apply(Client, _b.concat([_c.sent(), debug])))();
-                        return [4 /*yield*/, client.login()];
+                        return [4 /*yield*/, client._login()];
                     case 2:
                         _c.sent();
                         return [2 /*return*/, client];
