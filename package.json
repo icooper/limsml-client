@@ -1,6 +1,6 @@
 {
   "name": "limsml-client",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Client library for the LIMSML web service.",
   "main": "./dist/index.js",
   "scripts": {
