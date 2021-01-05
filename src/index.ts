@@ -9,7 +9,6 @@
 import CryptoJS from 'crypto-js';
 import soapRequest from 'easy-soap-request';
 import convert from 'xml-js';
-import util from 'util';
 import ent from 'ent';
 
 //#endregion
@@ -466,8 +465,7 @@ export class Client {
 
         // log the response information
         if (this._debug) {
-            console.info("process(): received object =");
-            console.info(util.inspect(response, false, 3, true).replace(/^/gm, "     "));
+            console.info("process(): received object", response);
         }
 
         // return the Response instance
