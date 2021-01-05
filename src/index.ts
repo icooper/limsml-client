@@ -6,10 +6,11 @@
 
 //#region Imports
 
-import crypto from 'crypto';
-import * as soap from 'soap';
+import CryptoJS from 'crypto-js';
+import soapRequest from 'easy-soap-request';
 import convert from 'xml-js';
 import util from 'util';
+import ent from 'ent';
 
 //#endregion
 
@@ -226,10 +227,10 @@ export class Client {
     readonly _username: string;
     /** SampleManager password */
     private readonly _password: string;
+    /** LIMSML web service url (e.g. `http://localhost:56104/`) */
+    readonly _url: string;
     /** LIMSML session number */
     _session?: string;
-    /** SOAP client instance */
-    protected readonly _client: soap.Client;
     /** debug mode flag */
     readonly _debug: boolean;
     /** list of valid actions */
@@ -244,10 +245,10 @@ export class Client {
      * @param client SOAP client instance
      * @param debug debug flag
      */
-    private constructor(username: string, password: string, client: soap.Client, debug?: boolean) {
+    private constructor(username: string, password: string, url: string, debug?: boolean) {
         this._username = username;
         this._password = password;
-        this._client = client;
+        this._url = url;
         this._debug = debug ?? false;
     }
 
@@ -352,7 +353,7 @@ export class Client {
         const request = new Request(this._getHeader(ConnectionType.StartSession), transactions);
 
         // send the login request
-        if (this._debug) console.error(`login(): logging in as user ${this._username}`);
+        if (this._debug) console.info(`login(): logging in as user ${this._username}`);
         const response = await this._process(request);
 
         // look for the session in the login response
@@ -360,13 +361,13 @@ export class Client {
 
             // save the session
             this._session = response.parameters.session;
-            if (this._debug) console.error(`login(): logged in with session ${this._session?.trim()}`);
+            if (this._debug) console.info(`login(): logged in with session ${this._session?.trim()}`);
 
             // get the LIMSML actions available if we don't already have a list
             if (!this._actions && response.data[actionsTable] && response.data[paramsTable]) {
                 const actionsData = response.data[actionsTable];
                 const paramsData = response.data[paramsTable];
-                if (this._debug) console.error("login(): reading available LIMSML actions");
+                if (this._debug) console.info("login(): reading available LIMSML actions");
 
                 // create an action for each of the actions except login and logout
                 actionsData.table.filter(a => !["login", "logout"].includes(a.action.toLowerCase())).forEach((a: any) => {
@@ -417,12 +418,12 @@ export class Client {
             if (response.errors.length === 0) {
                 this._session = undefined;
             }
-            if (this._debug) console.error(`logout(): ${response.errors.length === 0 ? "succeeded" : "failed"}`);
+            if (this._debug) console.info(`logout(): ${response.errors.length === 0 ? "succeeded" : "failed"}`);
         }
         
         // if not, nothing to do
         else {
-            if (this._debug) console.error("logout(): not logged in to begin with");
+            if (this._debug) console.info("logout(): not logged in to begin with");
         }
     }
 
@@ -435,25 +436,38 @@ export class Client {
 
         // log the request XML
         if (this._debug) {
-            console.error("process(): sent XML =")
-            console.error(request.toXml(true).replace(/^/gm, "     "));
+            console.info("process(): sent XML =")
+            console.info(request.toXml(true).replace(/^/gm, "     "));
         }
 
         // make the request via the SOAP client
-        const rawResponse = await this._client.ProcessAsync({ request: request.toXml() });
+        const soapResponse = await soapRequest({
+            url: this._url,
+            headers: {
+                "Content-Type": "text/xml; charset=utf-8",
+                SOAPAction: "http://www.thermo.com/informatics/xmlns/limswebservice/Process"
+            },
+            xml: request.toSoapXml()
+        });
+        
+        // throw an error if we didn't get a status code of 200 (OK)
+        if (soapResponse.response.statusCode !== 200) {
+            throw new Error(`SOAP request failed: response code = ${soapResponse.response.statusCode}`);
+        }
 
-        // parse the XML of the response
-        const responseObj = convert.xml2js(rawResponse[0].ProcessResult, { compact: true });
+        // extract the LIMSML response from the SOAP response
+        const limsmlResponse = ent.decode(soapResponse.response.body.replace(/^.*<ProcessResult>(.+)<\/ProcessResult>.*$/i, '$1'));
+
+        // parse the LIMSML response XML
+        const responseObj = convert.xml2js(limsmlResponse, { compact: true });
 
         // parse the response XML object into a Response instance
         const response = new Response(responseObj);
 
         // log the response information
         if (this._debug) {
-            // console.error("process(): received XML =");
-            // console.error(Utils.ObjectToXml(responseObj, true).replace(/^/gm, "     "));
-            console.error("process(): received object =");
-            console.error(util.inspect(response, false, 3, true).replace(/^/gm, "     "));
+            console.info("process(): received object =");
+            console.info(util.inspect(response, false, 3, true).replace(/^/gm, "     "));
         }
 
         // return the Response instance
@@ -480,7 +494,7 @@ export class Client {
 
         // create an action handler
         if (!this[actionFunc]) {
-            if (this._debug) console.error(`registerAction(): registering ${actionId} to new function ${actionFunc}()`);
+            if (this._debug) console.info(`registerAction(): registering ${actionId} to new function ${actionFunc}()`);
             this[actionFunc] = async function doAction(arg1: any, arg2: any): Promise<Response> {
 
                 // make sure we have some actions defined
@@ -527,7 +541,7 @@ export class Client {
                 }
             };
         } else {
-            if (this._debug) console.error(`registerAction(): registering ${actionId} to existing ${actionFunc}() function`);
+            if (this._debug) console.info(`registerAction(): registering ${actionId} to existing ${actionFunc}() function`);
         }
     }
 
@@ -535,16 +549,16 @@ export class Client {
      * Creates a new client connection via LIMSML web service.
      * @param username SampleManager username (default = `"SYSTEM"`)
      * @param password SampleManager password (default = `""`)
-     * @param url location to access LIMSML web service (default = `"http://localhost:56104/wsdl?wsdl"`)
+     * @param url location to access LIMSML web service (default = `"http://localhost:56104/"`)
      * @param debug debug flag (default = `false`)
      */
     static async login(
         username: string = "SYSTEM",
         password: string = "",
-        url: string = "http://localhost:56104/wsdl?wsdl",
+        url: string = "http://localhost:56104/",
         debug: boolean = false
     ): Promise<Client> {
-        const client = new Client(username, password, await soap.createClientAsync(url), debug);
+        const client = new Client(username, password, url, debug);
         await client._login();
         return client;
     }
@@ -616,8 +630,16 @@ class Request {
      * Returns the request as an XML string.
      * @returns XML string
      */
-    toXml(pretty?: boolean): any {
+    toXml(pretty?: boolean): string {
         return Utils.ObjectToXml(this.toObject(), pretty);
+    }
+
+    /**
+     * Returns the request as a SOAP XML request string.
+     * @returns SOAP XML request string
+     */
+    toSoapXml(): string {
+        return `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><Process xmlns="http://www.thermo.com/informatics/xmlns/limswebservice"><request>${ent.encode(this.toXml())}</request></Process></s:Body></s:Envelope>`;
     }
 }
 
@@ -833,7 +855,7 @@ namespace Utils {
      * @param input string used to generate the key
      * @returns Buffer containing 128-bit encryption key
      */
-    export function CreateKey(input: string): Buffer {
+    export function CreateKey(input: string): CryptoJS.lib.WordArray {
         const poly = 79764919; // nonstandard polynomial for CRC32
         const data = Buffer.from(input, "ascii");
 
@@ -861,11 +883,12 @@ namespace Utils {
         ].map((n: number) => (n < 16 ? "0" : "") + n.toString(16)).join("-").toUpperCase();
 
         // get the MD5 hash of the hex digit string
-        const key = crypto.createHash("md5").update(crcText).digest();
+        const key = CryptoJS.MD5(crcText);
 
         // set the last 11 bytes of the hash to 0
-        for (let i = 5; i < 16; i++) key[i] = 0;
-
+        key.words[1] = key.words[1] & 0xff000000;
+        key.words[2] = key.words[3] = 0;
+        
         // return the 40-bit key 0-padded to be 128 bits long)
         return key;
     }
@@ -876,19 +899,31 @@ namespace Utils {
      * @param plaintext the text to be encrypted
      * @returns the encrypted text as a string of hex digits
      */
-    export function EncryptString(key: Buffer, plaintext?: string): string {
+    export function EncryptString(key: CryptoJS.lib.WordArray, plaintext?: string): string {
+        
         // initialize the ciphertext as an empty string
         let ciphertext = "";
 
         // did we get non-empty plaintext?
         if (plaintext && plaintext.length > 0) {
 
-            // create an RC4 cipher with no initialization vector
-            const cipher = crypto.createCipheriv("rc4", key, null);
+            // convert the plaintext into a WordArray
+            const b = Buffer.from(plaintext, "utf16le");
+            const words = [ ];
+            for (let i = 0; i < b.length; i += 4) {
+                words.push(
+                    ((b[i] ?? 0) << 24) +
+                    ((b[i + 1] ?? 0) << 16) +
+                    ((b[i + 2] ?? 0) << 8) +
+                    (b[i + 3] ?? 0)
+                );
+            }
 
             // encrypt the plaintext
-            ciphertext = cipher.update(plaintext, "utf16le", "hex");
-            ciphertext += cipher.final("hex");
+            const cipher = CryptoJS.RC4.encrypt(CryptoJS.lib.WordArray.create(words), key);
+
+            // return the hex-encoded ciphertext
+            return cipher.ciphertext.toString(CryptoJS.enc.Hex);
         }
 
         // return the ciphertext

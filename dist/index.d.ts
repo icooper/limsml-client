@@ -3,7 +3,6 @@
  * @author Ian Cooper
  * @module limsml-client
  */
-import * as soap from 'soap';
 /** Limsml connection types */
 declare enum ConnectionType {
     StartSession = "StartSession",
@@ -139,10 +138,10 @@ export declare class Client {
     readonly _username: string;
     /** SampleManager password */
     private readonly _password;
+    /** LIMSML web service url (e.g. `http://localhost:56104/`) */
+    readonly _url: string;
     /** LIMSML session number */
     _session?: string;
-    /** SOAP client instance */
-    protected readonly _client: soap.Client;
     /** debug mode flag */
     readonly _debug: boolean;
     /** list of valid actions */
@@ -200,7 +199,7 @@ export declare class Client {
      * Creates a new client connection via LIMSML web service.
      * @param username SampleManager username (default = `"SYSTEM"`)
      * @param password SampleManager password (default = `""`)
-     * @param url location to access LIMSML web service (default = `"http://localhost:56104/wsdl?wsdl"`)
+     * @param url location to access LIMSML web service (default = `"http://localhost:56104/"`)
      * @param debug debug flag (default = `false`)
      */
     static login(username?: string, password?: string, url?: string, debug?: boolean): Promise<Client>;
@@ -238,7 +237,12 @@ declare class Request {
      * Returns the request as an XML string.
      * @returns XML string
      */
-    toXml(pretty?: boolean): any;
+    toXml(pretty?: boolean): string;
+    /**
+     * Returns the request as a SOAP XML request string.
+     * @returns SOAP XML request string
+     */
+    toSoapXml(): string;
 }
 /**
  * LIMSML response from the server.

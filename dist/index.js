@@ -4,25 +4,6 @@
  * @author Ian Cooper
  * @module limsml-client
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -65,10 +46,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Connect = exports.Client = void 0;
 //#region Imports
-var crypto_1 = __importDefault(require("crypto"));
-var soap = __importStar(require("soap"));
+var crypto_js_1 = __importDefault(require("crypto-js"));
+var easy_soap_request_1 = __importDefault(require("easy-soap-request"));
 var xml_js_1 = __importDefault(require("xml-js"));
 var util_1 = __importDefault(require("util"));
+var ent_1 = __importDefault(require("ent"));
 //#endregion
 //#region Constants
 /**
@@ -223,10 +205,10 @@ var Client = /** @class */ (function () {
      * @param client SOAP client instance
      * @param debug debug flag
      */
-    function Client(username, password, client, debug) {
+    function Client(username, password, url, debug) {
         this._username = username;
         this._password = password;
-        this._client = client;
+        this._url = url;
         this._debug = debug !== null && debug !== void 0 ? debug : false;
     }
     Client.prototype._execute = function (input) {
@@ -303,7 +285,7 @@ var Client = /** @class */ (function () {
                         request = new Request(this._getHeader(ConnectionType.StartSession), transactions);
                         // send the login request
                         if (this._debug)
-                            console.error("login(): logging in as user " + this._username);
+                            console.info("login(): logging in as user " + this._username);
                         return [4 /*yield*/, this._process(request)];
                     case 1:
                         response = _b.sent();
@@ -312,13 +294,13 @@ var Client = /** @class */ (function () {
                             // save the session
                             this._session = response.parameters.session;
                             if (this._debug)
-                                console.error("login(): logged in with session " + ((_a = this._session) === null || _a === void 0 ? void 0 : _a.trim()));
+                                console.info("login(): logged in with session " + ((_a = this._session) === null || _a === void 0 ? void 0 : _a.trim()));
                             // get the LIMSML actions available if we don't already have a list
                             if (!this._actions && response.data[actionsTable] && response.data[paramsTable]) {
                                 actionsData = response.data[actionsTable];
                                 paramsData_1 = response.data[paramsTable];
                                 if (this._debug)
-                                    console.error("login(): reading available LIMSML actions");
+                                    console.info("login(): reading available LIMSML actions");
                                 // create an action for each of the actions except login and logout
                                 actionsData.table.filter(function (a) { return !["login", "logout"].includes(a.action.toLowerCase()); }).forEach(function (a) {
                                     var allParameters = [];
@@ -361,11 +343,11 @@ var Client = /** @class */ (function () {
                             this._session = undefined;
                         }
                         if (this._debug)
-                            console.error("logout(): " + (response.errors.length === 0 ? "succeeded" : "failed"));
+                            console.info("logout(): " + (response.errors.length === 0 ? "succeeded" : "failed"));
                         return [3 /*break*/, 3];
                     case 2:
                         if (this._debug)
-                            console.error("logout(): not logged in to begin with");
+                            console.info("logout(): not logged in to begin with");
                         _a.label = 3;
                     case 3: return [2 /*return*/];
                 }
@@ -379,26 +361,36 @@ var Client = /** @class */ (function () {
      */
     Client.prototype._process = function (request) {
         return __awaiter(this, void 0, void 0, function () {
-            var rawResponse, responseObj, response;
+            var soapResponse, limsmlResponse, responseObj, response;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         // log the request XML
                         if (this._debug) {
-                            console.error("process(): sent XML =");
-                            console.error(request.toXml(true).replace(/^/gm, "     "));
+                            console.info("process(): sent XML =");
+                            console.info(request.toXml(true).replace(/^/gm, "     "));
                         }
-                        return [4 /*yield*/, this._client.ProcessAsync({ request: request.toXml() })];
+                        return [4 /*yield*/, easy_soap_request_1.default({
+                                url: this._url,
+                                headers: {
+                                    "Content-Type": "text/xml; charset=utf-8",
+                                    SOAPAction: "http://www.thermo.com/informatics/xmlns/limswebservice/Process"
+                                },
+                                xml: request.toSoapXml()
+                            })];
                     case 1:
-                        rawResponse = _a.sent();
-                        responseObj = xml_js_1.default.xml2js(rawResponse[0].ProcessResult, { compact: true });
+                        soapResponse = _a.sent();
+                        // throw an error if we didn't get a status code of 200 (OK)
+                        if (soapResponse.response.statusCode !== 200) {
+                            throw new Error("SOAP request failed: response code = " + soapResponse.response.statusCode);
+                        }
+                        limsmlResponse = ent_1.default.decode(soapResponse.response.body.replace(/^.*<ProcessResult>(.+)<\/ProcessResult>.*$/i, '$1'));
+                        responseObj = xml_js_1.default.xml2js(limsmlResponse, { compact: true });
                         response = new Response(responseObj);
                         // log the response information
                         if (this._debug) {
-                            // console.error("process(): received XML =");
-                            // console.error(Utils.ObjectToXml(responseObj, true).replace(/^/gm, "     "));
-                            console.error("process(): received object =");
-                            console.error(util_1.default.inspect(response, false, 3, true).replace(/^/gm, "     "));
+                            console.info("process(): received object =");
+                            console.info(util_1.default.inspect(response, false, 3, true).replace(/^/gm, "     "));
                         }
                         // return the Response instance
                         return [2 /*return*/, response];
@@ -424,7 +416,7 @@ var Client = /** @class */ (function () {
         // create an action handler
         if (!this[actionFunc]) {
             if (this._debug)
-                console.error("registerAction(): registering " + actionId + " to new function " + actionFunc + "()");
+                console.info("registerAction(): registering " + actionId + " to new function " + actionFunc + "()");
             this[actionFunc] = function doAction(arg1, arg2) {
                 return __awaiter(this, void 0, void 0, function () {
                     var parsedArgs, parameters, entity_1, actionId_1, transaction, response;
@@ -466,34 +458,30 @@ var Client = /** @class */ (function () {
         }
         else {
             if (this._debug)
-                console.error("registerAction(): registering " + actionId + " to existing " + actionFunc + "() function");
+                console.info("registerAction(): registering " + actionId + " to existing " + actionFunc + "() function");
         }
     };
     /**
      * Creates a new client connection via LIMSML web service.
      * @param username SampleManager username (default = `"SYSTEM"`)
      * @param password SampleManager password (default = `""`)
-     * @param url location to access LIMSML web service (default = `"http://localhost:56104/wsdl?wsdl"`)
+     * @param url location to access LIMSML web service (default = `"http://localhost:56104/"`)
      * @param debug debug flag (default = `false`)
      */
     Client.login = function (username, password, url, debug) {
         if (username === void 0) { username = "SYSTEM"; }
         if (password === void 0) { password = ""; }
-        if (url === void 0) { url = "http://localhost:56104/wsdl?wsdl"; }
+        if (url === void 0) { url = "http://localhost:56104/"; }
         if (debug === void 0) { debug = false; }
         return __awaiter(this, void 0, void 0, function () {
-            var client, _a, _b;
-            return __generator(this, function (_c) {
-                switch (_c.label) {
+            var client;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
                     case 0:
-                        _a = Client.bind;
-                        _b = [void 0, username, password];
-                        return [4 /*yield*/, soap.createClientAsync(url)];
-                    case 1:
-                        client = new (_a.apply(Client, _b.concat([_c.sent(), debug])))();
+                        client = new Client(username, password, url, debug);
                         return [4 /*yield*/, client._login()];
-                    case 2:
-                        _c.sent();
+                    case 1:
+                        _a.sent();
                         return [2 /*return*/, client];
                 }
             });
@@ -547,6 +535,13 @@ var Request = /** @class */ (function () {
      */
     Request.prototype.toXml = function (pretty) {
         return Utils.ObjectToXml(this.toObject(), pretty);
+    };
+    /**
+     * Returns the request as a SOAP XML request string.
+     * @returns SOAP XML request string
+     */
+    Request.prototype.toSoapXml = function () {
+        return "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><Process xmlns=\"http://www.thermo.com/informatics/xmlns/limswebservice\"><request>" + ent_1.default.encode(this.toXml()) + "</request></Process></s:Body></s:Envelope>";
     };
     return Request;
 }());
@@ -764,10 +759,10 @@ var Utils;
             (crc & 0xff)
         ].map(function (n) { return (n < 16 ? "0" : "") + n.toString(16); }).join("-").toUpperCase();
         // get the MD5 hash of the hex digit string
-        var key = crypto_1.default.createHash("md5").update(crcText).digest();
+        var key = crypto_js_1.default.MD5(crcText);
         // set the last 11 bytes of the hash to 0
-        for (var i = 5; i < 16; i++)
-            key[i] = 0;
+        key.words[1] = key.words[1] & 0xff000000;
+        key.words[2] = key.words[3] = 0;
         // return the 40-bit key 0-padded to be 128 bits long)
         return key;
     }
@@ -779,15 +774,24 @@ var Utils;
      * @returns the encrypted text as a string of hex digits
      */
     function EncryptString(key, plaintext) {
+        var _a, _b, _c, _d;
         // initialize the ciphertext as an empty string
         var ciphertext = "";
         // did we get non-empty plaintext?
         if (plaintext && plaintext.length > 0) {
-            // create an RC4 cipher with no initialization vector
-            var cipher = crypto_1.default.createCipheriv("rc4", key, null);
+            // convert the plaintext into a WordArray
+            var b = Buffer.from(plaintext, "utf16le");
+            var words = [];
+            for (var i = 0; i < b.length; i += 4) {
+                words.push((((_a = b[i]) !== null && _a !== void 0 ? _a : 0) << 24) +
+                    (((_b = b[i + 1]) !== null && _b !== void 0 ? _b : 0) << 16) +
+                    (((_c = b[i + 2]) !== null && _c !== void 0 ? _c : 0) << 8) +
+                    ((_d = b[i + 3]) !== null && _d !== void 0 ? _d : 0));
+            }
             // encrypt the plaintext
-            ciphertext = cipher.update(plaintext, "utf16le", "hex");
-            ciphertext += cipher.final("hex");
+            var cipher = crypto_js_1.default.RC4.encrypt(crypto_js_1.default.lib.WordArray.create(words), key);
+            // return the hex-encoded ciphertext
+            return cipher.ciphertext.toString(crypto_js_1.default.enc.Hex);
         }
         // return the ciphertext
         return ciphertext;
@@ -1053,3 +1057,4 @@ function Connect(username, password, url, debug) {
 }
 exports.Connect = Connect;
 //#endregion
+//# sourceMappingURL=index.js.map

@@ -54,3 +54,8 @@ LIMSML.Client.login("SYSTEM", "", "http://localhost:56104/wsdl?wsdl")
 ```
 
 See [src/demo.ts](src/demo.ts) for some more examples.
+
+## Changelog
+
+  * `0.4.0`: Rewrite to use `easy-soap-client` instead of `soap` module
+  * `0.3.1`: Usable release.
