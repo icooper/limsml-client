@@ -49,7 +49,6 @@ exports.Connect = exports.Client = void 0;
 var crypto_js_1 = __importDefault(require("crypto-js"));
 var easy_soap_request_1 = __importDefault(require("easy-soap-request"));
 var xml_js_1 = __importDefault(require("xml-js"));
-var util_1 = __importDefault(require("util"));
 var ent_1 = __importDefault(require("ent"));
 //#endregion
 //#region Constants
@@ -389,8 +388,7 @@ var Client = /** @class */ (function () {
                         response = new Response(responseObj);
                         // log the response information
                         if (this._debug) {
-                            console.info("process(): received object =");
-                            console.info(util_1.default.inspect(response, false, 3, true).replace(/^/gm, "     "));
+                            console.info("process(): received object", response);
                         }
                         // return the Response instance
                         return [2 /*return*/, response];
