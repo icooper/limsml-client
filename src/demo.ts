@@ -61,6 +61,14 @@ Client.login().then(async (client) => {
                     : "failure"
         );
 
+        // get the results for sample 2
+        console.log(
+            "Get Results:",
+            (await client.getResults({ sample_id: 2 }, "sample"))
+                .data.result.table
+                .map((r: any) => <any>{ name: r.name, type: r.result_type, result: r.result?.trim(), status: r.status ?? "U" })
+        );
+
         // logout
         await client.logout();
 

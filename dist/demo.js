@@ -40,18 +40,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var _1 = require(".");
 // connect to the local LIMSML web service
 _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, _b, _c, _d, _e, _f, sample, _g, _h, _j, reason_1;
-    return __generator(this, function (_k) {
-        switch (_k.label) {
+    var _a, _b, _c, _d, _e, _f, sample, _g, _h, _j, _k, _l, _m, reason_1;
+    return __generator(this, function (_o) {
+        switch (_o.label) {
             case 0:
-                _k.trys.push([0, 5, , 6]);
+                _o.trys.push([0, 6, , 7]);
                 // run the simple ping action
                 _b = (_a = console).log;
                 _c = ["Ping:"];
                 return [4 /*yield*/, client.ping({ message: "Howdy" })];
             case 1:
                 // run the simple ping action
-                _b.apply(_a, _c.concat([(_k.sent())
+                _b.apply(_a, _c.concat([(_o.sent())
                         .system.ping]));
                 // get the contents of the personnel table (up to 100 records)
                 _e = (_d = console).log;
@@ -59,7 +59,7 @@ _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void
                 return [4 /*yield*/, client.find({ pagesize: 100 }, "personnel")];
             case 2:
                 // get the contents of the personnel table (up to 100 records)
-                _e.apply(_d, _f.concat([(_k.sent())
+                _e.apply(_d, _f.concat([(_o.sent())
                         .data.personnel.table
                         .map(function (r) { return ({ identity: r.identity, name: r.name }); })]));
                 sample = {
@@ -98,21 +98,30 @@ _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void
                 _j = ["Result Entry:"];
                 return [4 /*yield*/, client.resultEntry(sample)];
             case 3:
-                _h.apply(_g, _j.concat([(_k.sent())
+                _h.apply(_g, _j.concat([(_o.sent())
                         .errors.length === 0
                         ? "success"
                         : "failure"]));
+                // get the results for sample 2
+                _l = (_k = console).log;
+                _m = ["Get Results:"];
+                return [4 /*yield*/, client.getResults({ sample_id: 2 }, "sample")];
+            case 4:
+                // get the results for sample 2
+                _l.apply(_k, _m.concat([(_o.sent())
+                        .data.result.table
+                        .map(function (r) { var _a, _b; return ({ name: r.name, type: r.result_type, result: (_a = r.result) === null || _a === void 0 ? void 0 : _a.trim(), status: (_b = r.status) !== null && _b !== void 0 ? _b : "U" }); })]));
                 // logout
                 return [4 /*yield*/, client.logout()];
-            case 4:
-                // logout
-                _k.sent();
-                return [3 /*break*/, 6];
             case 5:
-                reason_1 = _k.sent();
+                // logout
+                _o.sent();
+                return [3 /*break*/, 7];
+            case 6:
+                reason_1 = _o.sent();
                 console.log(reason_1);
-                return [3 /*break*/, 6];
-            case 6: return [2 /*return*/];
+                return [3 /*break*/, 7];
+            case 7: return [2 /*return*/];
         }
     });
 }); });
