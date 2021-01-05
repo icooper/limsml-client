@@ -366,6 +366,7 @@ export class Client {
             if (!this._actions && response.data[actionsTable] && response.data[paramsTable]) {
                 const actionsData = response.data[actionsTable];
                 const paramsData = response.data[paramsTable];
+                const registeredActions: { [action: string]: string } = { };
                 if (this._debug) console.info("login(): reading available LIMSML actions");
 
                 // create an action for each of the actions except login and logout
@@ -389,8 +390,11 @@ export class Client {
 
                     // create the action and register it with the client
                     const action = new ActionDefinition(a.action, a.return_type, { allParameters, requiredParameters, validEntities: [ a.entity ] });
-                    this._registerAction(a.entity.toLowerCase(), action);
+                    const registerInfo = this._registerAction(a.entity.toLowerCase(), action);
+                    if (this._debug) registeredActions[registerInfo.actionId] = registerInfo.actionFunc;
                 });
+
+                if (this._debug) console.info("login(): registered actions", registeredActions);
 
             }
         }
@@ -435,8 +439,7 @@ export class Client {
 
         // log the request XML
         if (this._debug) {
-            console.info("process(): sent XML =")
-            console.info(request.toXml(true).replace(/^/gm, "     "));
+            console.info("process(): sent XML", { xml: request.toXml(true) });
         }
 
         // make the request via the SOAP client
@@ -477,7 +480,7 @@ export class Client {
      * @param entity entity name
      * @param action Action instance
      */
-    protected _registerAction(entity: string, action: ActionDefinition) {
+    protected _registerAction(entity: string, action: ActionDefinition): { actionId: string, actionFunc: string } {
 
         // create the actions list if it's undefined
         this._actions ??= { };
@@ -492,7 +495,6 @@ export class Client {
 
         // create an action handler
         if (!this[actionFunc]) {
-            if (this._debug) console.info(`registerAction(): registering ${actionId} to new function ${actionFunc}()`);
             this[actionFunc] = async function doAction(arg1: any, arg2: any): Promise<Response> {
 
                 // make sure we have some actions defined
@@ -538,9 +540,9 @@ export class Client {
                     throw new Error("No actions registered.");
                 }
             };
-        } else {
-            if (this._debug) console.info(`registerAction(): registering ${actionId} to existing ${actionFunc}() function`);
         }
+
+        return { actionId, actionFunc }
     }
 
     /**

@@ -194,7 +194,10 @@ export declare class Client {
      * @param entity entity name
      * @param action Action instance
      */
-    protected _registerAction(entity: string, action: ActionDefinition): void;
+    protected _registerAction(entity: string, action: ActionDefinition): {
+        actionId: string;
+        actionFunc: string;
+    };
     /**
      * Creates a new client connection via LIMSML web service.
      * @param username SampleManager username (default = `"SYSTEM"`)

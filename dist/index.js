@@ -272,7 +272,7 @@ var Client = /** @class */ (function () {
     Client.prototype._login = function () {
         var _a;
         return __awaiter(this, void 0, void 0, function () {
-            var actionsTable, paramsTable, transactions, request, response, actionsData, paramsData_1;
+            var actionsTable, paramsTable, transactions, request, response, actionsData, paramsData_1, registeredActions_1;
             var _this = this;
             return __generator(this, function (_b) {
                 switch (_b.label) {
@@ -298,6 +298,7 @@ var Client = /** @class */ (function () {
                             if (!this._actions && response.data[actionsTable] && response.data[paramsTable]) {
                                 actionsData = response.data[actionsTable];
                                 paramsData_1 = response.data[paramsTable];
+                                registeredActions_1 = {};
                                 if (this._debug)
                                     console.info("login(): reading available LIMSML actions");
                                 // create an action for each of the actions except login and logout
@@ -316,8 +317,12 @@ var Client = /** @class */ (function () {
                                     });
                                     // create the action and register it with the client
                                     var action = new ActionDefinition(a.action, a.return_type, { allParameters: allParameters, requiredParameters: requiredParameters, validEntities: [a.entity] });
-                                    _this._registerAction(a.entity.toLowerCase(), action);
+                                    var registerInfo = _this._registerAction(a.entity.toLowerCase(), action);
+                                    if (_this._debug)
+                                        registeredActions_1[registerInfo.actionId] = registerInfo.actionFunc;
                                 });
+                                if (this._debug)
+                                    console.info("login(): registered actions", registeredActions_1);
                             }
                         }
                         return [2 /*return*/, true];
@@ -366,8 +371,7 @@ var Client = /** @class */ (function () {
                     case 0:
                         // log the request XML
                         if (this._debug) {
-                            console.info("process(): sent XML =");
-                            console.info(request.toXml(true).replace(/^/gm, "     "));
+                            console.info("process(): sent XML", { xml: request.toXml(true) });
                         }
                         return [4 /*yield*/, easy_soap_request_1.default({
                                 url: this._url,
@@ -413,8 +417,6 @@ var Client = /** @class */ (function () {
         this._actions[actionId] = action;
         // create an action handler
         if (!this[actionFunc]) {
-            if (this._debug)
-                console.info("registerAction(): registering " + actionId + " to new function " + actionFunc + "()");
             this[actionFunc] = function doAction(arg1, arg2) {
                 return __awaiter(this, void 0, void 0, function () {
                     var parsedArgs, parameters, entity_1, actionId_1, transaction, response;
@@ -454,10 +456,7 @@ var Client = /** @class */ (function () {
                 });
             };
         }
-        else {
-            if (this._debug)
-                console.info("registerAction(): registering " + actionId + " to existing " + actionFunc + "() function");
-        }
+        return { actionId: actionId, actionFunc: actionFunc };
     };
     /**
      * Creates a new client connection via LIMSML web service.
