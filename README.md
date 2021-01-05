@@ -57,6 +57,7 @@ See [src/demo.ts](src/demo.ts) for some more examples.
 
 ## Changelog
 
-  * `0.4.1`: Update logging to remove dependency on `util.inspect()` and make debug logs more readable in Chrome development tools.
-  * `0.4.0`: Trouble using with [React](https://reactjs.org/) and [Electron](https://www.electronjs.org/); [webpack](https://webpack.js.org/) seems to choke on some dependencies of the [`soap`](https://www.npmjs.com/package/soap) module. Updated to use [`easy-soap-request`](https://www.npmjs.com/package/easy-soap-request). Also now using [`CryptoJS`](https://www.npmjs.com/package/crypto-js) to ensure that the RC4 cipher is available.
-  * `0.3.1`: Usable.
+* `0.4.2`: Initial support for retrieving files from the LIMSML web service.
+* `0.4.1`: Update logging to remove dependency on `util.inspect()` and make debug logs more readable in Chrome development tools.
+* `0.4.0`: Trouble using with [React](https://reactjs.org/) and [Electron](https://www.electronjs.org/); [webpack](https://webpack.js.org/) seems to choke on some dependencies of the [`soap`](https://www.npmjs.com/package/soap) module. Updated to use [`easy-soap-request`](https://www.npmjs.com/package/easy-soap-request). Also now using [`CryptoJS`](https://www.npmjs.com/package/crypto-js) to ensure that the RC4 cipher is available.
+* `0.3.1`: Usable.

@@ -49,6 +49,11 @@ declare type Parameters = {
 declare type ResponseData<T> = {
     [name: string]: T;
 };
+/** LIMSML response data file */
+declare type ResponseFile = {
+    filename: string;
+    data: string;
+};
 /** Used to represent a LIMSML <action> node */
 declare type Action = {
     command: string;
@@ -257,6 +262,8 @@ declare class Response {
     readonly data: ResponseData<DataTable>;
     /** System messages returned in the LIMSML response */
     readonly system: ResponseData<string>;
+    /** Data files returned in the LIMSML response */
+    readonly files: ResponseFile[];
     /** Error messages returned in the LIMSML response */
     readonly errors: string[];
     /** Create a new LIMSML response object.
@@ -268,6 +275,11 @@ declare class Response {
      * @param e error node
      */
     protected processError(e: any): void;
+    /**
+     * Processes a data file in the LIMSML response XML object.
+     * @param f file node
+     */
+    protected processFile(f: any): void;
     /**
      * Processes a parameter node from the LIMSML response XML object.
      * @param p parameter node

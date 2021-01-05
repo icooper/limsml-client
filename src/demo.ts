@@ -69,6 +69,12 @@ Client.login().then(async (client) => {
                 .map((r: any) => <any>{ name: r.name, type: r.result_type, result: r.result?.trim(), status: r.status ?? "U" })
         );
 
+        // get a file
+        console.log(
+            "Get File:",
+            (await client.getFile({ filename: "C:\\Thermo\\SampleManager\\Server\\VGSM\\Exe\\LIMSML Examples\\Ping.xml" }))
+        );
+
         // logout
         await client.logout();
 

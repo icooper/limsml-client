@@ -392,7 +392,8 @@ var Client = /** @class */ (function () {
                         response = new Response(responseObj);
                         // log the response information
                         if (this._debug) {
-                            console.info("process(): received object", response);
+                            // console.info("process(): received raw", responseObj);
+                            console.info("process(): received response", response);
                         }
                         // return the Response instance
                         return [2 /*return*/, response];
@@ -555,6 +556,7 @@ var Response = /** @class */ (function () {
         this.parameters = {};
         this.data = {};
         this.system = {};
+        this.files = [];
         this.errors = [];
         // get the parameters
         if ((_b = (_a = response.limsml) === null || _a === void 0 ? void 0 : _a.header) === null || _b === void 0 ? void 0 : _b.parameter) {
@@ -609,6 +611,16 @@ var Response = /** @class */ (function () {
                 this.processError(e.errors.error);
             }
         }
+    };
+    /**
+     * Processes a data file in the LIMSML response XML object.
+     * @param f file node
+     */
+    Response.prototype.processFile = function (f) {
+        this.files.push({
+            filename: f.filename._text,
+            data: f.binary._text
+        });
     };
     /**
      * Processes a parameter node from the LIMSML response XML object.
@@ -671,7 +683,7 @@ var Response = /** @class */ (function () {
      */
     Response.prototype.processTransaction = function (t) {
         var _this = this;
-        var _a, _b, _c, _d, _e, _f, _g, _h;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         // is it a system transaction?
         if (t.system) {
             // look for a simple single returned value
@@ -712,6 +724,17 @@ var Response = /** @class */ (function () {
                             }
                         }
                     });
+                }
+            }
+            // look for a data file
+            if ((_j = t.data.DataFile) === null || _j === void 0 ? void 0 : _j.file) {
+                var file = t.data.DataFile.file;
+                // is this one file or an array of files?
+                if (Array.isArray(file)) {
+                    file.forEach(function (f) { return _this.processFile(f); });
+                }
+                else {
+                    this.processFile(file);
                 }
             }
         }
@@ -771,22 +794,12 @@ var Utils;
      * @returns the encrypted text as a string of hex digits
      */
     function EncryptString(key, plaintext) {
-        var _a, _b, _c, _d;
         // initialize the ciphertext as an empty string
         var ciphertext = "";
         // did we get non-empty plaintext?
         if (plaintext && plaintext.length > 0) {
-            // convert the plaintext into a WordArray
-            var b = Buffer.from(plaintext, "utf16le");
-            var words = [];
-            for (var i = 0; i < b.length; i += 4) {
-                words.push((((_a = b[i]) !== null && _a !== void 0 ? _a : 0) << 24) +
-                    (((_b = b[i + 1]) !== null && _b !== void 0 ? _b : 0) << 16) +
-                    (((_c = b[i + 2]) !== null && _c !== void 0 ? _c : 0) << 8) +
-                    ((_d = b[i + 3]) !== null && _d !== void 0 ? _d : 0));
-            }
             // encrypt the plaintext
-            var cipher = crypto_js_1.default.RC4.encrypt(crypto_js_1.default.lib.WordArray.create(words), key);
+            var cipher = crypto_js_1.default.RC4.encrypt(crypto_js_1.default.enc.Utf16LE.parse(plaintext), key);
             // return the hex-encoded ciphertext
             return cipher.ciphertext.toString(crypto_js_1.default.enc.Hex);
         }

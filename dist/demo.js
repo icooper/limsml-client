@@ -40,18 +40,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var _1 = require(".");
 // connect to the local LIMSML web service
 _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, _b, _c, _d, _e, _f, sample, _g, _h, _j, _k, _l, _m, reason_1;
-    return __generator(this, function (_o) {
-        switch (_o.label) {
+    var _a, _b, _c, _d, _e, _f, sample, _g, _h, _j, _k, _l, _m, _o, _p, _q, reason_1;
+    return __generator(this, function (_r) {
+        switch (_r.label) {
             case 0:
-                _o.trys.push([0, 6, , 7]);
+                _r.trys.push([0, 7, , 8]);
                 // run the simple ping action
                 _b = (_a = console).log;
                 _c = ["Ping:"];
                 return [4 /*yield*/, client.ping({ message: "Howdy" })];
             case 1:
                 // run the simple ping action
-                _b.apply(_a, _c.concat([(_o.sent())
+                _b.apply(_a, _c.concat([(_r.sent())
                         .system.ping]));
                 // get the contents of the personnel table (up to 100 records)
                 _e = (_d = console).log;
@@ -59,7 +59,7 @@ _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void
                 return [4 /*yield*/, client.find({ pagesize: 100 }, "personnel")];
             case 2:
                 // get the contents of the personnel table (up to 100 records)
-                _e.apply(_d, _f.concat([(_o.sent())
+                _e.apply(_d, _f.concat([(_r.sent())
                         .data.personnel.table
                         .map(function (r) { return ({ identity: r.identity, name: r.name }); })]));
                 sample = {
@@ -98,7 +98,7 @@ _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void
                 _j = ["Result Entry:"];
                 return [4 /*yield*/, client.resultEntry(sample)];
             case 3:
-                _h.apply(_g, _j.concat([(_o.sent())
+                _h.apply(_g, _j.concat([(_r.sent())
                         .errors.length === 0
                         ? "success"
                         : "failure"]));
@@ -108,20 +108,27 @@ _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void
                 return [4 /*yield*/, client.getResults({ sample_id: 2 }, "sample")];
             case 4:
                 // get the results for sample 2
-                _l.apply(_k, _m.concat([(_o.sent())
+                _l.apply(_k, _m.concat([(_r.sent())
                         .data.result.table
                         .map(function (r) { var _a, _b; return ({ name: r.name, type: r.result_type, result: (_a = r.result) === null || _a === void 0 ? void 0 : _a.trim(), status: (_b = r.status) !== null && _b !== void 0 ? _b : "U" }); })]));
+                // get a file
+                _p = (_o = console).log;
+                _q = ["Get File:"];
+                return [4 /*yield*/, client.getFile({ filename: "C:\\Thermo\\SampleManager\\Server\\VGSM\\Exe\\LIMSML Examples\\Ping.xml" })];
+            case 5:
+                // get a file
+                _p.apply(_o, _q.concat([(_r.sent())]));
                 // logout
                 return [4 /*yield*/, client.logout()];
-            case 5:
-                // logout
-                _o.sent();
-                return [3 /*break*/, 7];
             case 6:
-                reason_1 = _o.sent();
+                // logout
+                _r.sent();
+                return [3 /*break*/, 8];
+            case 7:
+                reason_1 = _r.sent();
                 console.log(reason_1);
-                return [3 /*break*/, 7];
-            case 7: return [2 /*return*/];
+                return [3 /*break*/, 8];
+            case 8: return [2 /*return*/];
         }
     });
 }); });

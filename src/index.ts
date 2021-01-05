@@ -54,6 +54,8 @@ type Fields = { [id: string]: { value: any, [attribute: string]: any } | any };
 type Parameters = { [name: string]: any; }
 /** LIMSML response data */
 type ResponseData<T> = { [name: string]: T; }
+/** LIMSML response data file */
+type ResponseFile = { filename: string, data: string };
 
 // LIMSML Nodes
 
@@ -468,7 +470,8 @@ export class Client {
 
         // log the response information
         if (this._debug) {
-            console.info("process(): received object", response);
+            // console.info("process(): received raw", responseObj);
+            console.info("process(): received response", response);
         }
 
         // return the Response instance
@@ -653,6 +656,8 @@ class Response {
     readonly data: ResponseData<DataTable>;
     /** System messages returned in the LIMSML response */
     readonly system: ResponseData<string>;
+    /** Data files returned in the LIMSML response */
+    readonly files: ResponseFile[];
     /** Error messages returned in the LIMSML response */
     readonly errors: string[];
 
@@ -663,6 +668,7 @@ class Response {
         this.parameters = { };
         this.data = { };
         this.system = { };
+        this.files = [ ];
         this.errors = [ ];
 
         // get the parameters
@@ -721,6 +727,17 @@ class Response {
                 this.processError(e.errors.error);
             }
         }
+    }
+
+    /**
+     * Processes a data file in the LIMSML response XML object.
+     * @param f file node
+     */
+    protected processFile(f: any): void {
+        this.files.push({
+            filename: f.filename._text,
+            data: f.binary._text
+        });
     }
 
     /**
@@ -837,6 +854,18 @@ class Response {
                     });
                 }
             }
+
+            // look for a data file
+            if (t.data.DataFile?.file) {
+                const file = t.data.DataFile.file;
+
+                // is this one file or an array of files?
+                if (Array.isArray(file)) {
+                    file.forEach(f => this.processFile(f));
+                } else {
+                    this.processFile(file);
+                }
+            }
         }
     }
 }
@@ -907,20 +936,8 @@ namespace Utils {
         // did we get non-empty plaintext?
         if (plaintext && plaintext.length > 0) {
 
-            // convert the plaintext into a WordArray
-            const b = Buffer.from(plaintext, "utf16le");
-            const words = [ ];
-            for (let i = 0; i < b.length; i += 4) {
-                words.push(
-                    ((b[i] ?? 0) << 24) +
-                    ((b[i + 1] ?? 0) << 16) +
-                    ((b[i + 2] ?? 0) << 8) +
-                    (b[i + 3] ?? 0)
-                );
-            }
-
             // encrypt the plaintext
-            const cipher = CryptoJS.RC4.encrypt(CryptoJS.lib.WordArray.create(words), key);
+            const cipher = CryptoJS.RC4.encrypt(CryptoJS.enc.Utf16LE.parse(plaintext), key);
 
             // return the hex-encoded ciphertext
             return cipher.ciphertext.toString(CryptoJS.enc.Hex);
