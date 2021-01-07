@@ -44,12 +44,12 @@ var path_1 = __importDefault(require("path"));
 var _1 = require(".");
 // connect to the local LIMSML web service
 _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, _b, _c, _d, _e, _f, sample, _g, _h, _j, _k, _l, _m, logical, resolved, filename, pingxml, reason_1;
+    var _a, _b, _c, _d, _e, _f, sample, _g, _h, _j, _k, _l, _m, logicalAction, logical, resolved, filename, pingxml, reason_1;
     var _o;
     return __generator(this, function (_p) {
         switch (_p.label) {
             case 0:
-                _p.trys.push([0, 8, , 9]);
+                _p.trys.push([0, 10, , 11]);
                 // run the simple ping action
                 _b = (_a = console).log;
                 _c = ["Ping:"];
@@ -123,6 +123,8 @@ _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void
                         var _b;
                         return (_a = {}, _a[r.name] = (_b = r.result) === null || _b === void 0 ? void 0 : _b.trim(), _a);
                     })]));
+                logicalAction = client.action("logical");
+                if (!(logicalAction.filter(function (a) { return a.validEntities.includes("system"); }).length === 1)) return [3 /*break*/, 7];
                 logical = "smp$programs";
                 return [4 /*yield*/, client.logical({ logical: logical })];
             case 5:
@@ -133,17 +135,22 @@ _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void
             case 6:
                 pingxml = (_p.sent()).files[0];
                 console.log("Get File:", pingxml);
-                // logout
-                return [4 /*yield*/, client.logout()];
+                return [3 /*break*/, 8];
             case 7:
+                console.log("No action found to resolve logical, skipping this part. Information to install the action can be found at https://github.com/icooper/limsml-client/tree/main/vgl#readme.");
+                _p.label = 8;
+            case 8: 
+            // logout
+            return [4 /*yield*/, client.logout()];
+            case 9:
                 // logout
                 _p.sent();
-                return [3 /*break*/, 9];
-            case 8:
+                return [3 /*break*/, 11];
+            case 10:
                 reason_1 = _p.sent();
                 console.log(reason_1);
-                return [3 /*break*/, 9];
-            case 9: return [2 /*return*/];
+                return [3 /*break*/, 11];
+            case 11: return [2 /*return*/];
         }
     });
 }); });

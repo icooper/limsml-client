@@ -234,8 +234,8 @@ export class Client {
     _session?: string;
     /** debug mode flag */
     readonly _debug: boolean;
-    /** list of valid actions */
-    _actions?: { [id: string]: ActionDefinition };
+    /** list of valid actions; access via actions() function */
+    protected _actions?: { [id: string]: ActionDefinition };
     /** dynamically-created Action methods */
     [method: string]: any;
 
@@ -251,6 +251,20 @@ export class Client {
         this._password = password;
         this._url = url;
         this._debug = debug ?? false;
+    }
+
+    /**
+     * Gets information about known actions.
+     * @param action action name
+     * @returns list of matching actions
+     */
+    action(action: string): ActionDefinition[] {
+
+        // convert the action command to lowercase
+        action = action.toLowerCase();
+
+        // return the list of matching actions
+        return Object.values(this._actions ?? { }).filter(a => a.command === action);
     }
 
     /**
@@ -371,8 +385,11 @@ export class Client {
                 const registeredActions: { [action: string]: string } = { };
                 if (this._debug) console.info("login(): reading available LIMSML actions");
 
-                // create an action for each of the actions except login and logout
-                actionsData.table.filter(a => !["login", "logout"].includes(a.action.toLowerCase())).forEach((a: any) => {
+                // make sure we don't overwrite any existing functions on this
+                const thisFunctions = Object.keys(this);
+
+                // create an action for each of the actions except ones that would override existing functions
+                actionsData.table.filter(a => !thisFunctions.includes(a.action.toLowerCase())).forEach((a: any) => {
                     const allParameters: string[] = [ ];
                     const requiredParameters: string[] = [ ];
 

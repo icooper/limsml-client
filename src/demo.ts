@@ -71,15 +71,23 @@ Client.login().then(async (client) => {
                 .map((r: any) => ({ [r.name]: r.result?.trim() }))
         );
 
-        // get a logical (requires SYSTEM.LOGICAL action, see file ../vgl/limsml_utils.rpf)
-        const logical = "smp$programs";
-        const resolved = (await client.logical({ logical })).system.logical;
-        console.log("Get Logical:", { [logical]: resolved });
+        // do we have a system.logical action?
+        const logicalAction = client.action("logical");
+        if (logicalAction.filter(a => a.validEntities.includes("system")).length === 1) {
 
-        // get a file (requires SYSTEM.LOGICAL action)
-        const filename = path.join(resolved, "LIMSML Examples", "Ping.xml");
-        const pingxml = (await client.getFile({ filename })).files[0];
-        console.log("Get File:", pingxml);
+            // get a logical
+            const logical = "smp$programs";
+            const resolved = (await client.logical({ logical })).system.logical;
+            console.log("Get Logical:", { [logical]: resolved });
+
+            // get a file
+            const filename = path.join(resolved, "LIMSML Examples", "Ping.xml");
+            const pingxml = (await client.getFile({ filename })).files[0];
+            console.log("Get File:", pingxml);
+
+        } else {
+            console.log("No action found to resolve logical, skipping this part. Information to install the action can be found at https://github.com/icooper/limsml-client/tree/main/vgl#readme.");
+        }
 
         // logout
         await client.logout();

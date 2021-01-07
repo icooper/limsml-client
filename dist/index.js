@@ -210,6 +210,18 @@ var Client = /** @class */ (function () {
         this._url = url;
         this._debug = debug !== null && debug !== void 0 ? debug : false;
     }
+    /**
+     * Gets information about known actions.
+     * @param action action name
+     * @returns list of matching actions
+     */
+    Client.prototype.action = function (action) {
+        var _a;
+        // convert the action command to lowercase
+        action = action.toLowerCase();
+        // return the list of matching actions
+        return Object.values((_a = this._actions) !== null && _a !== void 0 ? _a : {}).filter(function (a) { return a.command === action; });
+    };
     Client.prototype._execute = function (input) {
         return __awaiter(this, void 0, void 0, function () {
             var transactions, request, response;
@@ -272,7 +284,7 @@ var Client = /** @class */ (function () {
     Client.prototype._login = function () {
         var _a;
         return __awaiter(this, void 0, void 0, function () {
-            var actionsTable, paramsTable, transactions, request, response, actionsData, paramsData_1, registeredActions_1;
+            var actionsTable, paramsTable, transactions, request, response, actionsData, paramsData_1, registeredActions_1, thisFunctions_1;
             var _this = this;
             return __generator(this, function (_b) {
                 switch (_b.label) {
@@ -301,8 +313,9 @@ var Client = /** @class */ (function () {
                                 registeredActions_1 = {};
                                 if (this._debug)
                                     console.info("login(): reading available LIMSML actions");
-                                // create an action for each of the actions except login and logout
-                                actionsData.table.filter(function (a) { return !["login", "logout"].includes(a.action.toLowerCase()); }).forEach(function (a) {
+                                thisFunctions_1 = Object.keys(this);
+                                // create an action for each of the actions except ones that would override existing functions
+                                actionsData.table.filter(function (a) { return !thisFunctions_1.includes(a.action.toLowerCase()); }).forEach(function (a) {
                                     var allParameters = [];
                                     var requiredParameters = [];
                                     // iterate through each parameter relevant to that action

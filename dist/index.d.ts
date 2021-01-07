@@ -149,8 +149,8 @@ export declare class Client {
     _session?: string;
     /** debug mode flag */
     readonly _debug: boolean;
-    /** list of valid actions */
-    _actions?: {
+    /** list of valid actions; access via actions() function */
+    protected _actions?: {
         [id: string]: ActionDefinition;
     };
     /** dynamically-created Action methods */
@@ -163,6 +163,12 @@ export declare class Client {
      * @param debug debug flag
      */
     private constructor();
+    /**
+     * Gets information about known actions.
+     * @param action action name
+     * @returns list of matching actions
+     */
+    action(action: string): ActionDefinition[];
     /**
      * Executes a transaction created by an Action instance.
      * @param transaction Transaction to execute
