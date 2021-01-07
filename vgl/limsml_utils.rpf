@@ -1,0 +1,44 @@
+{*******************************************************************************
+*
+* Module Name   : LIMSML_UTILS
+*
+* Purpose       : Additional LIMSML actions.
+*
+* Author        : Ian Cooper
+* Date          : 6 January 2021
+*
+*******************************************************************************}
+
+SET NOTPROTECTED
+SET NAME "DEFER/"
+SET COMPILE_OPTION DECLARE
+ENABLE WINDOWS
+
+{*******************************************************************************
+*                               R O U T I N E S
+*******************************************************************************}
+
+ROUTINE system_logical ( processor, entity, action, response )
+
+{ Returns the value of a logical.
+*
+* Parameters   : processor , [LIMSML_PROCESS]
+*                entity    , [HELPER_ENTITY]
+*                action    , [HELPER_ACTIONML]
+*                response  , [HELPER_RICHDOCUMENT,HELPER_DOCUMENT]]
+*
+* Return Value : [Text]
+*
+*******************************************************************************}
+
+	DECLARE resolved
+
+	resolved = LOGICAL ( action . get_param_default ( "LOGICAL", "" ) )
+
+	RETURN ( resolved )
+
+ENDROUTINE
+
+{******************************************************************************}
+{******************************************************************************}
+{******************************************************************************}
