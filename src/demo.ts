@@ -1,3 +1,5 @@
+import path from 'path';
+
 // use the LIMSML client library
 import { Client, Entity } from '.';
 
@@ -17,7 +19,7 @@ Client.login().then(async (client) => {
             "Personnel:",
             (await client.find({ pagesize: 100 }, "personnel"))
                 .data.personnel.table
-                .map((r: any) => <any>{ identity: r.identity, name: r.name })
+                .map((r: any) => ({ [r.identity]: r.name }))
         );
 
         // enter some sample results
@@ -66,14 +68,18 @@ Client.login().then(async (client) => {
             "Get Results:",
             (await client.getResults({ sample_id: 2 }, "sample"))
                 .data.result.table
-                .map((r: any) => <any>{ name: r.name, type: r.result_type, result: r.result?.trim(), status: r.status ?? "U" })
+                .map((r: any) => ({ [r.name]: r.result?.trim() }))
         );
 
-        // get a file
-        console.log(
-            "Get File:",
-            (await client.getFile({ filename: "C:\\Thermo\\SampleManager\\Server\\VGSM\\Exe\\LIMSML Examples\\Ping.xml" }))
-        );
+        // get a logical (requires SYSTEM.LOGICAL action, see file ../vgl/limsml_utils.rpf)
+        const logical = "smp$programs";
+        const resolved = (await client.logical({ logical })).system.logical;
+        console.log("Get Logical:", { [logical]: resolved });
+
+        // get a file (requires SYSTEM.LOGICAL action)
+        const filename = path.join(resolved, "LIMSML Examples", "Ping.xml");
+        const pingxml = (await client.getFile({ filename })).files[0];
+        console.log("Get File:", pingxml);
 
         // logout
         await client.logout();

@@ -35,23 +35,28 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+var path_1 = __importDefault(require("path"));
 // use the LIMSML client library
 var _1 = require(".");
 // connect to the local LIMSML web service
 _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, _b, _c, _d, _e, _f, sample, _g, _h, _j, _k, _l, _m, _o, _p, _q, reason_1;
-    return __generator(this, function (_r) {
-        switch (_r.label) {
+    var _a, _b, _c, _d, _e, _f, sample, _g, _h, _j, _k, _l, _m, logical, resolved, filename, pingxml, reason_1;
+    var _o;
+    return __generator(this, function (_p) {
+        switch (_p.label) {
             case 0:
-                _r.trys.push([0, 7, , 8]);
+                _p.trys.push([0, 8, , 9]);
                 // run the simple ping action
                 _b = (_a = console).log;
                 _c = ["Ping:"];
                 return [4 /*yield*/, client.ping({ message: "Howdy" })];
             case 1:
                 // run the simple ping action
-                _b.apply(_a, _c.concat([(_r.sent())
+                _b.apply(_a, _c.concat([(_p.sent())
                         .system.ping]));
                 // get the contents of the personnel table (up to 100 records)
                 _e = (_d = console).log;
@@ -59,9 +64,12 @@ _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void
                 return [4 /*yield*/, client.find({ pagesize: 100 }, "personnel")];
             case 2:
                 // get the contents of the personnel table (up to 100 records)
-                _e.apply(_d, _f.concat([(_r.sent())
+                _e.apply(_d, _f.concat([(_p.sent())
                         .data.personnel.table
-                        .map(function (r) { return ({ identity: r.identity, name: r.name }); })]));
+                        .map(function (r) {
+                        var _a;
+                        return (_a = {}, _a[r.identity] = r.name, _a);
+                    })]));
                 sample = {
                     type: "sample",
                     fields: { id_numeric: 2 },
@@ -98,7 +106,7 @@ _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void
                 _j = ["Result Entry:"];
                 return [4 /*yield*/, client.resultEntry(sample)];
             case 3:
-                _h.apply(_g, _j.concat([(_r.sent())
+                _h.apply(_g, _j.concat([(_p.sent())
                         .errors.length === 0
                         ? "success"
                         : "failure"]));
@@ -108,27 +116,34 @@ _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void
                 return [4 /*yield*/, client.getResults({ sample_id: 2 }, "sample")];
             case 4:
                 // get the results for sample 2
-                _l.apply(_k, _m.concat([(_r.sent())
+                _l.apply(_k, _m.concat([(_p.sent())
                         .data.result.table
-                        .map(function (r) { var _a, _b; return ({ name: r.name, type: r.result_type, result: (_a = r.result) === null || _a === void 0 ? void 0 : _a.trim(), status: (_b = r.status) !== null && _b !== void 0 ? _b : "U" }); })]));
-                // get a file
-                _p = (_o = console).log;
-                _q = ["Get File:"];
-                return [4 /*yield*/, client.getFile({ filename: "C:\\Thermo\\SampleManager\\Server\\VGSM\\Exe\\LIMSML Examples\\Ping.xml" })];
+                        .map(function (r) {
+                        var _a;
+                        var _b;
+                        return (_a = {}, _a[r.name] = (_b = r.result) === null || _b === void 0 ? void 0 : _b.trim(), _a);
+                    })]));
+                logical = "smp$programs";
+                return [4 /*yield*/, client.logical({ logical: logical })];
             case 5:
-                // get a file
-                _p.apply(_o, _q.concat([(_r.sent())]));
+                resolved = (_p.sent()).system.logical;
+                console.log("Get Logical:", (_o = {}, _o[logical] = resolved, _o));
+                filename = path_1.default.join(resolved, "LIMSML Examples", "Ping.xml");
+                return [4 /*yield*/, client.getFile({ filename: filename })];
+            case 6:
+                pingxml = (_p.sent()).files[0];
+                console.log("Get File:", pingxml);
                 // logout
                 return [4 /*yield*/, client.logout()];
-            case 6:
-                // logout
-                _r.sent();
-                return [3 /*break*/, 8];
             case 7:
-                reason_1 = _r.sent();
+                // logout
+                _p.sent();
+                return [3 /*break*/, 9];
+            case 8:
+                reason_1 = _p.sent();
                 console.log(reason_1);
-                return [3 /*break*/, 8];
-            case 8: return [2 /*return*/];
+                return [3 /*break*/, 9];
+            case 9: return [2 /*return*/];
         }
     });
 }); });
