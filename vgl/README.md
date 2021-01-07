@@ -1,6 +1,6 @@
 # Custom LIMSML Action
 
-If you are going to use the SYSTEM.GET_FILE action to try and download attachments and/or resources, you'll probably want to install this new SYSTEM.LOGICAL LIMSML entity action.
+If you are going to use the `SYSTEM.GET_FILE` action to try and download attachments and/or resources from a SampleManager server, you'll probably want to install this new `SYSTEM.LOGICAL` LIMSML entity action (or something similar).
 
 ## Installation Instructions
 
