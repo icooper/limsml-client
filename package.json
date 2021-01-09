@@ -1,6 +1,6 @@
 {
   "name": "limsml-client",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Client library for the LIMSML web service.",
   "main": "./dist/index.js",
   "scripts": {
@@ -22,12 +22,14 @@
   },
   "homepage": "https://github.com/icooper/limsml-client#readme",
   "devDependencies": {
+    "@types/base-64": "^0.1.3",
     "@types/crypto-js": "^4.0.1",
     "@types/ent": "^2.2.3",
     "@types/node": "^14.14.14",
     "typescript": "^4.1.3"
   },
   "dependencies": {
+    "base-64": "^1.0.0",
     "crypto-js": "^4.0.0",
     "easy-soap-request": "^4.1.1",
     "ent": "^2.2.0",

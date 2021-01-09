@@ -53,6 +53,7 @@ declare type ResponseData<T> = {
 declare type ResponseFile = {
     filename: string;
     data: string;
+    text?: string;
 };
 /** Used to represent a LIMSML <action> node */
 declare type Action = {
@@ -139,6 +140,8 @@ declare class ActionDefinition {
  * This should be instantiated using `Client.login()`.
  */
 export declare class Client {
+    /** Maximum size where base64-encoded received files are automatically decoded */
+    static MAX_BASE64_DECODE: number;
     /** SampleManager username */
     readonly _username: string;
     /** SampleManager password */

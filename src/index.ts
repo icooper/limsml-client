@@ -6,10 +6,11 @@
 
 //#region Imports
 
-import CryptoJS from 'crypto-js';
-import soapRequest from 'easy-soap-request';
+import * as base64 from 'base-64';
 import convert from 'xml-js';
+import CryptoJS from 'crypto-js';
 import ent from 'ent';
+import soapRequest from 'easy-soap-request';
 
 //#endregion
 
@@ -55,7 +56,7 @@ type Parameters = { [name: string]: any; }
 /** LIMSML response data */
 type ResponseData<T> = { [name: string]: T; }
 /** LIMSML response data file */
-type ResponseFile = { filename: string, data: string };
+type ResponseFile = { filename: string, data: string, text?: string };
 
 // LIMSML Nodes
 
@@ -223,6 +224,9 @@ class ActionDefinition {
  * This should be instantiated using `Client.login()`.
  */
 export class Client {
+
+    /** Maximum size where base64-encoded received files are automatically decoded */
+    static MAX_BASE64_DECODE: number = 524288;
 
     /** SampleManager username */
     readonly _username: string;
@@ -751,10 +755,16 @@ class Response {
      * @param f file node
      */
     protected processFile(f: any): void {
-        this.files.push({
+        const file: ResponseFile = {
             filename: f.filename._text,
             data: f.binary._text
-        });
+        }
+
+        if (file.data.length < Client.MAX_BASE64_DECODE) {
+            file.text = base64.decode(file.data);
+        }
+
+        this.files.push(file);
     }
 
     /**

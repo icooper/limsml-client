@@ -57,6 +57,7 @@ See [src/demo.ts](src/demo.ts) for some more examples.
 
 ## Changelog
 
+* `0.5.1`: Added automatic Base64-decoding of received files under 512KB encoded size (override via `Client.MAX_BASE64_DECODE`).
 * `0.5.0`: Made `Client._actions` protected, added `Client.action()` to get action definition, and updated [demo](src/demo.ts) to show usage.
 * `0.4.3`: Added [custom LIMSML action example](vgl#readme)
 * `0.4.2`: Initial support for retrieving files from the LIMSML web service.

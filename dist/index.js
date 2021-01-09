@@ -4,6 +4,25 @@
  * @author Ian Cooper
  * @module limsml-client
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -46,10 +65,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Connect = exports.Client = void 0;
 //#region Imports
-var crypto_js_1 = __importDefault(require("crypto-js"));
-var easy_soap_request_1 = __importDefault(require("easy-soap-request"));
+var base64 = __importStar(require("base-64"));
 var xml_js_1 = __importDefault(require("xml-js"));
+var crypto_js_1 = __importDefault(require("crypto-js"));
 var ent_1 = __importDefault(require("ent"));
+var easy_soap_request_1 = __importDefault(require("easy-soap-request"));
 //#endregion
 //#region Constants
 /**
@@ -498,6 +518,8 @@ var Client = /** @class */ (function () {
             });
         });
     };
+    /** Maximum size where base64-encoded received files are automatically decoded */
+    Client.MAX_BASE64_DECODE = 524288;
     return Client;
 }());
 exports.Client = Client;
@@ -630,10 +652,14 @@ var Response = /** @class */ (function () {
      * @param f file node
      */
     Response.prototype.processFile = function (f) {
-        this.files.push({
+        var file = {
             filename: f.filename._text,
             data: f.binary._text
-        });
+        };
+        if (file.data.length < Client.MAX_BASE64_DECODE) {
+            file.text = base64.decode(file.data);
+        }
+        this.files.push(file);
     };
     /**
      * Processes a parameter node from the LIMSML response XML object.
