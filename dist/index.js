@@ -302,12 +302,12 @@ var Client = /** @class */ (function () {
      * @returns Promise of true if the login was successful
      */
     Client.prototype._login = function () {
-        var _a;
+        var _a, _b;
         return __awaiter(this, void 0, void 0, function () {
-            var actionsTable, paramsTable, transactions, request, response, actionsData, paramsData_1, registeredActions_1, thisFunctions_1;
+            var result, actionsTable, paramsTable, transactions, request, response, actionsData, paramsData_1, registeredActions_1, thisFunctions_1;
             var _this = this;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
+            return __generator(this, function (_c) {
+                switch (_c.label) {
                     case 0:
                         actionsTable = "limsml_entity_action";
                         paramsTable = "limsml_entity_param";
@@ -319,11 +319,12 @@ var Client = /** @class */ (function () {
                             console.info("login(): logging in as user " + this._username);
                         return [4 /*yield*/, this._process(request)];
                     case 1:
-                        response = _b.sent();
+                        response = _c.sent();
                         // look for the session in the login response
                         if (response.parameters.session) {
                             // save the session
                             this._session = response.parameters.session;
+                            result = { session: this._session };
                             if (this._debug)
                                 console.info("login(): logged in with session " + ((_a = this._session) === null || _a === void 0 ? void 0 : _a.trim()));
                             // get the LIMSML actions available if we don't already have a list
@@ -358,7 +359,10 @@ var Client = /** @class */ (function () {
                                     console.info("login(): registered actions", registeredActions_1);
                             }
                         }
-                        return [2 /*return*/, true];
+                        else {
+                            result = { error: ((_b = response.errors[0]) !== null && _b !== void 0 ? _b : "").replace("\n", "") };
+                        }
+                        return [2 /*return*/, result];
                 }
             });
         });
@@ -420,12 +424,12 @@ var Client = /** @class */ (function () {
                         if (soapResponse.response.statusCode !== 200) {
                             throw new Error("SOAP request failed: response code = " + soapResponse.response.statusCode);
                         }
-                        limsmlResponse = ent_1.default.decode(soapResponse.response.body.replace(/^.*<ProcessResult>(.+)<\/ProcessResult>.*$/i, '$1'));
+                        limsmlResponse = ent_1.default.decode(soapResponse.response.body.replace(/^.*<ProcessResult>(.+)<\/ProcessResult>.*$/is, '$1'));
                         responseObj = xml_js_1.default.xml2js(limsmlResponse, { compact: true });
                         response = new Response(responseObj);
                         // log the response information
                         if (this._debug) {
-                            // console.info("process(): received raw", responseObj);
+                            // console.info("process(): received raw", limsmlResponse);
                             console.info("process(): received response", response);
                         }
                         // return the Response instance
@@ -505,15 +509,24 @@ var Client = /** @class */ (function () {
         if (url === void 0) { url = "http://localhost:56104/"; }
         if (debug === void 0) { debug = false; }
         return __awaiter(this, void 0, void 0, function () {
-            var client;
+            var client, result;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         client = new Client(username, password, url, debug);
                         return [4 /*yield*/, client._login()];
                     case 1:
-                        _a.sent();
-                        return [2 /*return*/, client];
+                        result = _a.sent();
+                        if (result.session) {
+                            return [2 /*return*/, client];
+                        }
+                        else if (result.error && result.error !== "") {
+                            throw new Error(result.error);
+                        }
+                        else {
+                            throw new Error("Login failed.");
+                        }
+                        return [2 /*return*/];
                 }
             });
         });

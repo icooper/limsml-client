@@ -95,4 +95,4 @@ Client.login().then(async (client) => {
     } catch (reason) {
         console.log(reason);
     }
-});
+}).catch(console.error);

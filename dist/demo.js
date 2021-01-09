@@ -153,5 +153,5 @@ _1.Client.login().then(function (client) { return __awaiter(void 0, void 0, void
             case 11: return [2 /*return*/];
         }
     });
-}); });
+}); }).catch(console.error);
 //# sourceMappingURL=demo.js.map

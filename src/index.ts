@@ -11,6 +11,7 @@ import convert from 'xml-js';
 import CryptoJS from 'crypto-js';
 import ent from 'ent';
 import soapRequest from 'easy-soap-request';
+import util from 'util';
 
 //#endregion
 
@@ -358,7 +359,10 @@ export class Client {
      * completed before any other transactions can be executed.
      * @returns Promise of true if the login was successful
      */
-    private async _login(): Promise<boolean> {
+    private async _login(): Promise<any> {
+
+        // the value we'll return
+        let result: any;
 
         // we're requesting the contents of these tables during login
         const actionsTable = "limsml_entity_action";
@@ -380,6 +384,7 @@ export class Client {
 
             // save the session
             this._session = response.parameters.session;
+            result = { session: this._session };
             if (this._debug) console.info(`login(): logged in with session ${this._session?.trim()}`);
 
             // get the LIMSML actions available if we don't already have a list
@@ -420,10 +425,11 @@ export class Client {
                 if (this._debug) console.info("login(): registered actions", registeredActions);
 
             }
+        } else {
+            result = { error: (response.errors[0] ?? "").replace("\n", "") };
         }
 
-
-        return true;
+        return result;
     }
 
     async logout(): Promise<void> {
@@ -481,7 +487,7 @@ export class Client {
         }
 
         // extract the LIMSML response from the SOAP response
-        const limsmlResponse = ent.decode(soapResponse.response.body.replace(/^.*<ProcessResult>(.+)<\/ProcessResult>.*$/i, '$1'));
+        const limsmlResponse = ent.decode(soapResponse.response.body.replace(/^.*<ProcessResult>(.+)<\/ProcessResult>.*$/is, '$1'));
 
         // parse the LIMSML response XML
         const responseObj = convert.xml2js(limsmlResponse, { compact: true });
@@ -491,7 +497,7 @@ export class Client {
 
         // log the response information
         if (this._debug) {
-            // console.info("process(): received raw", responseObj);
+            // console.info("process(): received raw", limsmlResponse);
             console.info("process(): received response", response);
         }
 
@@ -583,8 +589,15 @@ export class Client {
         debug: boolean = false
     ): Promise<Client> {
         const client = new Client(username, password, url, debug);
-        await client._login();
-        return client;
+        const result = await client._login();
+
+        if (result.session) {
+            return client;
+        } else if (result.error && result.error !== "") {
+            throw new Error(result.error);
+        } else {
+            throw new Error("Login failed.");
+        }
     }
 }
 
